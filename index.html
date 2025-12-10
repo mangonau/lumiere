@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lumière 2.0</title>
+    <meta name="apple-mobile-web-app-title" content="Lumière">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#fdfcf8">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%23d68c78'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='300' fill='white'%3EL%3C/text%3E%3C/svg%3E">
+
+    <!-- Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600&family=Lato:wght@300;400&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { serif: ['"Noto Serif TC"', 'serif'], sans: ['"Lato"', 'sans-serif'], display: ['"Playfair Display"', 'serif'] },
+                    colors: { 'paper': '#fdfcf8', 'ink': '#2c2c2c', 'sage': '#84a98c', 'terra': '#d68c78', 'sand': '#eaddcf' }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Lato', 'Noto Serif TC', sans-serif; background-color: #fdfcf8; color: #2c2c2c; -webkit-tap-highlight-color: transparent; overflow: hidden; }
+        .dark body { background-color: #1a1a1a; color: #e5e5e5; }
+        .paper-card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 20px -5px rgba(0,0,0,0.05); }
+        .dark .paper-card { background: rgba(40, 40, 40, 0.6); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .elegant-input { border: none; background: transparent; border-bottom: 1px solid #d1d5db; padding: 12px 0; outline: none; transition: 0.3s; color: #4b5563; width: 100%; }
+        .elegant-input:focus { border-bottom-color: #d68c78; }
+        .dark .elegant-input { border-bottom-color: #555; color: #eee; }
+        .page-content { display: none; height: 100%; overflow-y: auto; padding-bottom: 100px; padding-top: 10px; animation: fadeIn 0.3s ease-out; }
+        .page-content.active { display: block; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Toast Notification */
+        #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px); background: #2c2c2c; color: white; padding: 10px 20px; border-radius: 20px; font-size: 12px; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .dark #toast { background: #eaddcf; color: #2c2c2c; }
+
+        /* Lock Screen */
+        #lockScreen { position: fixed; inset: 0; background: #fdfcf8; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .dark #lockScreen { background: #1a1a1a; }
+        .pin-dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #d68c78; transition: 0.2s; }
+        .pin-dot.filled { background: #d68c78; }
+        .keypad-btn { width: 65px; height: 65px; border-radius: 50%; font-size: 22px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.03); margin: 8px; active:scale-95; cursor: pointer; }
+        .dark .keypad-btn { background: rgba(255,255,255,0.1); color: white; }
+    </style>
+</head>
+<body>
+
+    <!-- FIREBASE MODULE -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, updateDoc, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // 🟢🟢🟢 請在這裡貼上你的 Firebase Config 🟢🟢🟢
+        const firebaseConfig = {
+            apiKey: "你的_API_KEY",
+            authDomain: "你的_PROJECT_ID.firebaseapp.com",
+            projectId: "你的_PROJECT_ID",
+            storageBucket: "你的_PROJECT_ID.appspot.com",
+            messagingSenderId: "你的_SENDER_ID",
+            appId: "你的_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Export to global for HTML inline JS
+        window.db = db;
+        window.collection = collection;
+        window.addDoc = addDoc;
+        window.onSnapshot = onSnapshot;
+        window.updateDoc = updateDoc;
+        window.deleteDoc = deleteDoc;
+        window.doc = doc;
+        window.query = query;
+        window.orderBy = orderBy;
+
+        console.log("Firebase v10 Initialized");
+        window.startApp(); // Start the app logic
+    </script>
+
+    <!-- 🔒 PIN Lock -->
+    <div id="lockScreen">
+        <h1 class="font-serif italic text-4xl mb-8 text-ink dark:text-white">Lumière</h1>
+        <p id="lockMsg" class="text-xs text-gray-400 mb-8 uppercase tracking-widest">Enter Passcode</p>
+        <div class="flex gap-6 mb-12"><div class="pin-dot" id="dot1"></div><div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div><div class="pin-dot" id="dot4"></div></div>
+        <div class="grid grid-cols-3 gap-4">
+            <div class="keypad-btn" onclick="enterPin(1)">1</div><div class="keypad-btn" onclick="enterPin(2)">2</div><div class="keypad-btn" onclick="enterPin(3)">3</div>
+            <div class="keypad-btn" onclick="enterPin(4)">4</div><div class="keypad-btn" onclick="enterPin(5)">5</div><div class="keypad-btn" onclick="enterPin(6)">6</div>
+            <div class="keypad-btn" onclick="enterPin(7)">7</div><div class="keypad-btn" onclick="enterPin(8)">8</div><div class="keypad-btn" onclick="enterPin(9)">9</div>
+            <div class="keypad-btn opacity-0"></div><div class="keypad-btn" onclick="enterPin(0)">0</div><div class="keypad-btn" onclick="enterPin('del')"><i class="fas fa-backspace"></i></div>
+        </div>
+    </div>
+
+    <!-- 🍞 Toast Notification -->
+    <div id="toast"><i class="fas fa-check-circle mr-2"></i><span id="toastMsg">Success</span></div>
+
+    <!-- Main Container -->
+    <div class="w-full h-full max-w-md mx-auto relative z-10 p-5 pt-8 flex flex-col">
+        
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6 flex-shrink-0">
+            <h1 class="font-serif text-2xl font-bold tracking-wider text-ink dark:text-gray-100 flex items-center gap-2">
+                <i class="fas fa-feather-alt text-terra"></i> Lumière
+            </h1>
+            <div class="flex gap-4">
+                <button onclick="switchTab('settings')" class="text-gray-400 hover:text-terra transition"><i class="fas fa-cog text-xl"></i></button>
+            </div>
+        </div>
+
+        <!-- 🏠 PAGE: HOME -->
+        <div id="page-home" class="page-content active scrollbar-hide">
+            <div class="mb-6"><p class="text-xs text-gray-400 tracking-widest uppercase mb-1" id="dateDisplay">DATE</p><h2 class="text-3xl font-serif text-ink dark:text-white" id="greeting">Hello.</h2></div>
+            
+            <!-- Net Worth Card -->
+            <div class="paper-card rounded-3xl p-6 mb-6 relative overflow-hidden group">
+                <div class="absolute right-0 top-0 w-32 h-32 bg-gradient-to-bl from-sand/50 to-transparent rounded-bl-full pointer-events-none"></div>
+                <p class="text-[10px] text-gray-400 uppercase tracking-[0.2em] mb-2">Total Net Worth</p>
+                <h3 class="font-serif italic text-4xl text-ink dark:text-white mb-6" id="netWorth">$...</h3>
+                <div class="flex gap-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+                    <div class="flex-1"><p class="text-[10px] text-gray-400 mb-1">Assets</p><p class="font-bold text-sage text-lg" id="totalAsset">...</p></div>
+                    <div class="flex-1 border-l border-gray-100 dark:border-gray-700 pl-4"><p class="text-[10px] text-gray-400 mb-1">Debts</p><p class="font-bold text-terra text-lg" id="totalDebt">...</p></div>
+                </div>
+            </div>
+
+            <!-- Monthly Progress -->
+            <div class="paper-card rounded-2xl p-5 mb-6 space-y-4">
+                <h4 class="text-xs text-gray-400 font-bold uppercase tracking-widest mb-2">本月概況</h4>
+                <div><div class="flex justify-between text-xs mb-1"><span class="text-gray-500">收入 Income</span><span class="font-bold text-sage" id="homeIncome">$0</span></div><div class="w-full bg-gray-100 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden"><div class="bg-sage h-full rounded-full transition-all duration-1000" style="width: 0%" id="barIncome"></div></div></div>
+                <div><div class="flex justify-between text-xs mb-1"><span class="text-gray-500">支出 Expense</span><span class="font-bold text-terra" id="homeExpense">$0</span></div><div class="w-full bg-gray-100 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden"><div class="bg-terra h-full rounded-full transition-all duration-1000" style="width: 0%" id="barExpense"></div></div></div>
+            </div>
+
+            <!-- Recent Transactions (Preview) -->
+            <h4 class="text-xs text-gray-400 font-bold uppercase tracking-widest mb-3 pl-1">Recent Activity</h4>
+            <div id="homeRecentList" class="space-y-2 pb-10"></div>
+        </div>
+
+        <!-- 📝 PAGE: RECORD -->
+        <div id="page-record" class="page-content scrollbar-hide">
+            <!-- Search & View Toggle -->
+            <div class="flex gap-2 mb-4">
+                <div class="relative flex-1">
+                    <i class="fas fa-search absolute left-3 top-3.5 text-gray-400 text-xs"></i>
+                    <input type="text" id="searchInput" placeholder="搜尋..." class="w-full bg-white/50 dark:bg-white/5 border border-gray-200 dark:border-gray-700 rounded-xl py-2.5 pl-9 pr-4 text-sm outline-none focus:border-terra transition" onkeyup="renderTransactionList()">
+                </div>
+                <button onclick="toggleView()" id="viewToggleBtn" class="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 text-gray-500"><i class="fas fa-calendar-alt"></i></button>
+            </div>
+
+            <!-- Calendar View (Hidden by default) -->
+            <div id="calendarView" class="hidden mb-6 animate-fade-in paper-card rounded-2xl p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="changeMonth(-1)"><i class="fas fa-chevron-left text-xs"></i></button><span class="font-serif font-bold" id="calMonthYear">...</span><button onclick="changeMonth(1)"><i class="fas fa-chevron-right text-xs"></i></button>
+                </div>
+                <div class="grid grid-cols-7 gap-1 text-center mb-2 text-[10px] text-gray-400"><div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div></div>
+                <div id="calendarGrid" class="grid grid-cols-7 gap-1"></div>
+            </div>
+
+            <!-- Input Form -->
+            <div id="recordFormContainer" class="paper-card rounded-2xl p-6 mb-6 relative">
+                <input type="hidden" id="editId">
+                <div class="flex gap-2 mb-6 border-b border-gray-100 dark:border-gray-700 pb-1">
+                    <button class="flex-1 text-sm font-bold pb-3 border-b-2 border-terra text-terra transition" id="btnExpense" onclick="setFormType('支出')">支出</button>
+                    <button class="flex-1 text-sm text-gray-400 pb-3 transition" id="btnIncome" onclick="setFormType('收入')">收入</button>
+                    <button class="flex-1 text-sm text-gray-400 pb-3 transition" id="btnTransfer" onclick="setFormType('轉帳')">轉帳</button>
+                </div>
+                <form id="financeForm" class="space-y-5">
+                    <input type="hidden" id="formType" value="支出">
+                    <div class="flex gap-4">
+                        <input type="date" id="dateInput" class="elegant-input text-sm font-serif" required>
+                        <select id="accountInput" class="elegant-input text-sm bg-transparent" required></select>
+                    </div>
+                    
+                    <div id="transferField" class="hidden">
+                        <select id="toAccountInput" class="elegant-input text-sm bg-transparent"></select>
+                        <p class="text-[10px] text-gray-400 mt-1">轉入帳戶 (To)</p>
+                    </div>
+
+                    <div class="flex gap-4" id="normalFields">
+                        <select id="categoryInput" class="elegant-input text-sm bg-transparent w-1/2"></select>
+                        <input type="text" id="itemInput" placeholder="項目內容..." class="elegant-input text-sm w-1/2">
+                    </div>
+
+                    <div class="relative">
+                        <span class="absolute top-3 left-0 text-xl text-gray-400 font-serif">$</span>
+                        <input type="number" id="amountInput" placeholder="0" class="elegant-input pl-6 text-3xl font-serif text-ink dark:text-white" required>
+                    </div>
+
+                    <div class="flex items-center gap-2" id="claimSection">
+                        <input type="checkbox" id="isClaimable" class="w-4 h-4 rounded border-gray-300 text-terra focus:ring-terra">
+                        <label for="isClaimable" class="text-xs text-gray-500">公司代墊款 (報帳)</label>
+                    </div>
+
+                    <div class="flex gap-2 pt-2">
+                        <button type="button" id="cancelEditBtn" onclick="cancelEdit()" class="hidden w-1/3 bg-gray-100 text-gray-500 py-3 rounded-xl text-sm">取消</button>
+                        <button type="submit" id="submitBtn" class="w-full bg-ink dark:bg-white text-white dark:text-black py-3.5 rounded-xl shadow-lg active:scale-95 transition font-serif tracking-widest text-sm">SAVE</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- List -->
+            <div id="transactionList" class="space-y-3 pb-20"></div>
+        </div>
+
+        <!-- 💼 PAGE: ASSETS -->
+        <div id="page-assets" class="page-content scrollbar-hide">
+            <div class="flex justify-between items-end mb-6 px-1">
+                <h3 class="font-serif text-lg text-ink dark:text-white pl-3 border-l-2 border-gray-400">資產指揮中心</h3>
+                <button onclick="openModal('accountModal')" class="text-xs bg-ink text-white dark:bg-white dark:text-black px-4 py-2 rounded-lg shadow active:scale-95 transition"><i class="fas fa-plus mr-1"></i> 帳戶</button>
+            </div>
+            <div class="mb-8"><h4 class="text-xs text-gray-400 font-bold mb-3 pl-2">現金與銀行 Bank</h4><div id="bankList" class="space-y-3"></div></div>
+            <div><h4 class="text-xs text-gray-400 font-bold mb-3 pl-2">信用卡 Credit</h4><div id="creditList" class="space-y-3"></div></div>
+        </div>
+
+        <!-- 📊 PAGE: STATS -->
+        <div id="page-stats" class="page-content scrollbar-hide">
+            <h3 class="font-serif text-lg text-ink dark:text-white mb-6 pl-3 border-l-2 border-sage">收支分析</h3>
+            <div class="paper-card rounded-2xl p-5 mb-6"><h4 class="text-xs text-gray-400 uppercase tracking-widest mb-4 text-center">本月支出分佈</h4><div class="h-64 relative"><canvas id="categoryChart"></canvas></div></div>
+            
+            <div class="flex justify-between items-end mb-4 px-1"><h3 class="font-serif text-lg text-ink dark:text-white pl-3 border-l-2 border-terra">預算控制</h3><button onclick="openModal('budgetModal')" class="text-xs border border-gray-300 px-3 py-1 rounded-lg">設定</button></div>
+            <div id="budgetList" class="space-y-4 mb-8"></div>
+        </div>
+
+        <!-- ⚙️ PAGE: SETTINGS / MANAGE -->
+        <div id="page-settings" class="page-content scrollbar-hide">
+            
+            <!-- Recurring -->
+            <div class="flex justify-between items-end mb-4 px-1"><h3 class="font-serif text-lg text-ink dark:text-white pl-3 border-l-2 border-clay">固定收支</h3><button onclick="openModal('recurringModal')" class="text-xs bg-ink text-white dark:bg-white dark:text-black px-3 py-1.5 rounded-lg shadow"><i class="fas fa-plus mr-1"></i> 新增</button></div>
+            <div id="recurringList" class="space-y-3 mb-8"></div>
+
+            <!-- Claims -->
+            <div id="claimAlert" class="hidden paper-card rounded-xl p-4 mb-4 border-l-4 border-terra flex justify-between items-center"><span class="text-xs text-terra font-bold tracking-wide">待核銷代墊款</span><div class="flex items-center gap-2"><span id="claimAmount" class="font-serif text-lg text-terra">$0</span></div></div>
+            <div id="claimList" class="space-y-3 mb-8"></div>
+
+            <!-- Data & Security -->
+            <h3 class="font-serif text-lg text-ink dark:text-white mt-8 mb-4 pl-3 border-l-2 border-blue-400">系統設定</h3>
+            <div class="paper-card rounded-xl p-4 space-y-4">
+                <div class="flex justify-between items-center"><div><div class="font-bold text-sm">資料備份 (CSV)</div><div class="text-[10px] text-gray-400">下載所有紀錄</div></div><button onclick="exportCSV()" class="text-xs bg-blue-50 text-blue-600 px-3 py-2 rounded-lg"><i class="fas fa-download"></i></button></div>
+                <div class="flex justify-between items-center pt-4 border-t border-gray-100 dark:border-gray-700"><div><div class="font-bold text-sm">重設 PIN 碼</div><div class="text-[10px] text-gray-400">清除目前鎖定密碼</div></div><button onclick="resetPin()" class="text-xs border border-gray-300 px-3 py-2 rounded-lg">重設</button></div>
+                <div class="flex justify-between items-center pt-4 border-t border-gray-100 dark:border-gray-700"><div><div class="font-bold text-sm">切換深色模式</div></div><button id="themeToggleBtn" class="text-xs bg-gray-100 dark:bg-gray-700 w-10 h-6 rounded-full relative"><div class="absolute w-4 h-4 bg-white rounded-full top-1 left-1 dark:left-5 transition-all"></div></button></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modals -->
+    <div id="modalOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-6">
+        <!-- Account Modal -->
+        <div id="accountModal" class="paper-card w-full max-w-xs rounded-2xl p-6 hidden">
+            <h3 class="font-serif font-bold mb-4 text-center">新增帳戶</h3>
+            <form id="accountForm" class="space-y-4">
+                <input type="text" id="accName" placeholder="名稱 (如: 台新黑狗卡)" class="elegant-input text-sm" required>
+                <select id="accType" class="elegant-input text-sm" onchange="toggleDeadline()"><option value="bank">銀行 / 現金</option><option value="credit">信用卡</option></select>
+                <input type="number" id="accInitial" placeholder="初始金額 / 額度" class="elegant-input text-sm" required>
+                <div id="deadlineField" class="hidden flex items-center"><span class="text-xs text-gray-400 mr-2">每月</span><input type="number" id="accDeadline" placeholder="27" min="1" max="31" class="bg-transparent outline-none w-10 border-b text-center"><span class="text-xs text-gray-400">號繳款</span></div>
+                <div class="flex gap-2 pt-2"><button type="button" onclick="closeModal()" class="flex-1 py-2 text-xs bg-gray-100 rounded-lg">取消</button><button type="submit" class="flex-1 py-2 text-xs bg-ink text-white rounded-lg">儲存</button></div>
+            </form>
+        </div>
+        <!-- Recurring Modal -->
+        <div id="recurringModal" class="paper-card w-full max-w-xs rounded-2xl p-6 hidden">
+            <h3 class="font-serif font-bold mb-4 text-center">固定收支</h3>
+            <form id="recurringForm" class="space-y-4">
+                <input type="text" id="recItem" placeholder="項目" class="elegant-input text-sm" required>
+                <div class="flex gap-2"><select id="recType" class="elegant-input w-1/3 text-sm"><option value="支出">支出</option><option value="收入">收入</option></select><select id="recCategory" class="elegant-input w-2/3 text-sm"></select></div>
+                <div class="flex gap-2"><input type="number" id="recAmount" placeholder="金額" class="elegant-input w-1/2 text-sm" required><div class="w-1/2 flex items-center"><span class="text-xs text-gray-400 mr-1">每月</span><input type="number" id="recDay" placeholder="5" class="bg-transparent outline-none w-full text-sm border-b"><span class="text-xs text-gray-400">號</span></div></div>
+                <select id="recAccount" class="elegant-input text-sm"></select>
+                <div class="flex gap-2 pt-2"><button type="button" onclick="closeModal()" class="flex-1 py-2 text-xs bg-gray-100 rounded-lg">取消</button><button type="submit" class="flex-1 py-2 text-xs bg-ink text-white rounded-lg">儲存</button></div>
+            </form>
+        </div>
+        <!-- Budget Modal -->
+        <div id="budgetModal" class="paper-card w-full max-w-xs rounded-2xl p-6 hidden">
+            <h3 class="font-serif font-bold mb-4 text-center">分類預算</h3>
+            <form id="budgetForm" class="space-y-4">
+                <select id="budCategory" class="elegant-input text-sm" required></select>
+                <input type="number" id="budAmount" placeholder="每月限額" class="elegant-input text-sm" required>
+                <div class="flex gap-2 pt-2"><button type="button" onclick="closeModal()" class="flex-1 py-2 text-xs bg-gray-100 rounded-lg">取消</button><button type="submit" class="flex-1 py-2 text-xs bg-ink text-white rounded-lg">儲存</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <div class="fixed bottom-0 left-0 w-full bg-[#fdfcf8]/95 dark:bg-[#1a1a1a]/95 backdrop-blur border-t border-gray-200 dark:border-gray-800 flex justify-around py-3 z-40 safe-area-bottom">
+        <div class="nav-btn nav-active cursor-pointer w-16 text-center" onclick="switchTab('home', this)"><i class="fas fa-home nav-icon block mb-1"></i><span class="nav-label text-gray-400">首頁</span></div>
+        <div id="nav-record" class="nav-btn cursor-pointer w-16 text-center" onclick="switchTab('record', this)"><i class="fas fa-pen-nib nav-icon block mb-1"></i><span class="nav-label text-gray-400">記帳</span></div>
+        <div class="nav-btn cursor-pointer w-16 text-center" onclick="switchTab('assets', this)"><i class="fas fa-wallet nav-icon block mb-1"></i><span class="nav-label text-gray-400">資產</span></div>
+        <div class="nav-btn cursor-pointer w-16 text-center" onclick="switchTab('stats', this)"><i class="fas fa-chart-pie nav-icon block mb-1"></i><span class="nav-label text-gray-400">統計</span></div>
+        <div class="nav-btn cursor-pointer w-16 text-center" onclick="switchTab('settings', this)"><i class="fas fa-sliders-h nav-icon block mb-1"></i><span class="nav-label text-gray-400">設定</span></div>
+    </div>
+
+    <!-- LOGIC -->
+    <script>
+        // State
+        let records=[], recurring=[], accounts=[], budgets=[], catChart=null;
+        let currentPin = '', storedPin = localStorage.getItem('lumiere_pin');
+        let editId = null;
+        let unsubscribe = []; // For cleaning up listeners
+
+        const categories = { '支出': ['飲食', '交通', '購物', '娛樂', '居住', '醫療', '學習', '公司代墊', '其他'], '收入': ['薪資', '獎金', '投資', '兼職', '公司撥款', '其他'] };
+
+        // 1. Startup
+        window.startApp = function() {
+            if(!storedPin) document.getElementById('lockMsg').innerText = "Create a 4-digit PIN";
+            initDate();
+            setupRealtimeListeners();
+        }
+
+        // 2. Real-time Listeners (The Magic)
+        function setupRealtimeListeners() {
+            const qRec = window.query(window.collection(window.db, "records"), window.orderBy("date", "desc"));
+            unsubscribe.push(window.onSnapshot(qRec, (snap) => {
+                records = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                updateUI();
+            }));
+
+            unsubscribe.push(window.onSnapshot(window.collection(window.db, "accounts"), (snap) => {
+                accounts = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                updateUI();
+            }));
+
+            unsubscribe.push(window.onSnapshot(window.collection(window.db, "recurring"), (snap) => {
+                recurring = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                updateUI();
+            }));
+
+            unsubscribe.push(window.onSnapshot(window.collection(window.db, "budgets"), (snap) => {
+                budgets = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                updateUI();
+            }));
+        }
+
+        // 3. UI Updates (Centralized)
+        function updateUI() {
+            renderDropdowns();
+            renderHome();
+            renderRecordList();
+            renderAssets();
+            renderStats();
+            renderManage();
+        }
+
+        function renderDropdowns() {
+            const opts = accounts.map(a => `<option value="${a.name}">${a.name}</option>`).join('');
+            document.getElementById('accountInput').innerHTML = opts;
+            document.getElementById('toAccountInput').innerHTML = opts;
+            document.getElementById('recAccount').innerHTML = opts;
+            updateCatOpts();
+            document.getElementById('budCategory').innerHTML = categories['支出'].map(c => `<option value="${c}">${c}</option>`).join('');
+        }
+
+        function renderHome() {
+            const { totalAsset, totalDebt, mIncome, mExpense } = calcStats();
+            document.getElementById('netWorth').innerText = `$${format(totalAsset - totalDebt)}`;
+            document.getElementById('totalAsset').innerText = `$${format(totalAsset)}`;
+            document.getElementById('totalDebt').innerText = `$${format(totalDebt)}`;
+            document.getElementById('homeIncome').innerText = `+${format(mIncome)}`;
+            document.getElementById('homeExpense').innerText = `-${format(mExpense)}`;
+            // Bars
+            const max = Math.max(mIncome, mExpense, 1000);
+            document.getElementById('barIncome').style.width = `${(mIncome/max)*100}%`;
+            document.getElementById('barExpense').style.width = `${(mExpense/max)*100}%`;
+            // Recent
+            const list = document.getElementById('homeRecentList'); list.innerHTML = '';
+            records.slice(0, 3).forEach(r => list.appendChild(createRow(r)));
+        }
+
+        function renderRecordList() {
+            const list = document.getElementById('transactionList'); list.innerHTML = '';
+            const key = document.getElementById('searchInput').value.toLowerCase();
+            const filter = records.filter(r => (r.item||'').toLowerCase().includes(key) || (r.category||'').toLowerCase().includes(key));
+            if(filter.length === 0) list.innerHTML = '<div class="text-center text-gray-400 text-xs py-10">無紀錄</div>';
+            filter.slice(0, 50).forEach(r => list.appendChild(createRow(r)));
+        }
+
+        function renderAssets() {
+            const { balances } = calcStats();
+            const bList = document.getElementById('bankList'); bList.innerHTML = '';
+            const cList = document.getElementById('creditList'); cList.innerHTML = '';
+            
+            if(accounts.length === 0) { bList.innerHTML = '<p class="text-center text-gray-400 text-xs py-4">請新增帳戶</p>'; return; }
+
+            accounts.forEach(a => {
+                const bal = balances[a.name] || 0;
+                const div = document.createElement('div');
+                div.className = 'paper-card p-4 rounded-xl flex justify-between items-center relative group';
+                if(a.type === 'bank') {
+                    div.innerHTML = `<div><div class="font-bold text-sm text-ink dark:text-white mb-1"><i class="fas fa-wallet text-gray-400 mr-2"></i>${a.name}</div></div><div class="text-right"><div class="font-serif font-bold text-sage text-lg">$${format(a.initial + bal)}</div><button onclick="delDoc('accounts','${a.id}')" class="text-gray-300 hover:text-red-400 absolute top-4 right-2 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times"></i></button></div>`;
+                    bList.appendChild(div);
+                } else {
+                    const used = bal; // Credit usage is stored as positive expense usually, but logic depends on calc
+                    // My logic: expense subtracts from balance. For credit, initial is limit.
+                    // Let's assume: initial = Limit. Balance = -(spent).
+                    // So Available = Initial + Balance (since balance is negative). Used = -Balance.
+                    const usedAmount = -bal; 
+                    const available = a.initial + bal;
+                    const pct = Math.min((usedAmount / a.initial)*100, 100);
+                    div.innerHTML = `<div><div class="font-bold text-sm text-ink dark:text-white mb-1"><i class="fas fa-credit-card text-gray-400 mr-2"></i>${a.name}</div><div class="w-24 bg-gray-200 h-1 mt-2 rounded-full"><div class="bg-terra h-full rounded-full" style="width:${pct}%"></div></div></div><div class="text-right"><div class="font-serif font-bold text-terra text-lg">$${format(usedAmount)}</div><div class="text-[9px] text-gray-400">Used</div><button onclick="delDoc('accounts','${a.id}')" class="text-gray-300 hover:text-red-400 absolute top-4 right-2 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times"></i></button></div>`;
+                    cList.appendChild(div);
+                }
+            });
+        }
+
+        function renderManage() {
+            const rList = document.getElementById('recurringList'); rList.innerHTML = '';
+            if(recurring.length===0) rList.innerHTML = '<p class="text-xs text-center text-gray-400 py-4 border border-dashed border-gray-300 rounded-xl">無固定收支</p>';
+            recurring.sort((a,b)=>a.day-b.day).forEach(r => {
+                const div = document.createElement('div'); div.className='paper-card p-3 rounded-xl flex justify-between items-center mb-2';
+                div.innerHTML = `<div class="flex items-center gap-3"><div class="flex flex-col items-center bg-sand/30 p-1.5 rounded-lg w-10"><span class="text-[9px] text-gray-500 uppercase">Day</span><span class="font-serif font-bold text-ink">${r.day}</span></div><div><div class="text-sm font-bold text-ink dark:text-gray-200">${r.item}</div><div class="text-[10px] text-gray-400">$${format(r.amount)} · ${r.account}</div></div></div><div class="flex items-center gap-2"><button onclick="execRec('${r.id}')" class="bg-ink text-white p-1.5 rounded shadow text-[10px]"><i class="fas fa-check"></i></button><button onclick="delDoc('recurring','${r.id}')" class="text-gray-300 p-1.5"><i class="fas fa-times"></i></button></div>`;
+                rList.appendChild(div);
+            });
+
+            const cList = document.getElementById('claimList'); cList.innerHTML = '';
+            const claims = records.filter(r => r.isClaimable && !r.isReimbursed);
+            const totalClaim = claims.reduce((a,b)=>a+b.amount,0);
+            const alert = document.getElementById('claimAlert');
+            if(totalClaim > 0) { alert.classList.remove('hidden'); document.getElementById('claimAmount').innerText=`$${format(totalClaim)}`; } 
+            else alert.classList.add('hidden');
+
+            claims.forEach(c => {
+                const div = document.createElement('div'); div.className='paper-card p-3 rounded-xl flex justify-between items-center mb-2 border-l-4 border-terra';
+                div.innerHTML = `<div><div class="text-sm font-bold">${c.item}</div><div class="text-[10px] text-gray-400">${c.date} · ${c.account}</div></div><div class="flex items-center gap-2"><span class="font-serif font-bold text-terra">$${format(c.amount)}</span><button onclick="reimburse('${c.id}')" class="text-[10px] bg-white border border-gray-200 px-2 py-1 rounded shadow-sm">核銷</button></div>`;
+                cList.appendChild(div);
+            });
+        }
+
+        function renderStats() {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            const now = new Date();
+            const thisMonth = records.filter(r => { const d=new Date(r.date); return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear() && r.type==='支出'; });
+            let map = {}; thisMonth.forEach(r => map[r.category] = (map[r.category]||0) + r.amount);
+            
+            if(catChart) catChart.destroy();
+            catChart = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(map), datasets: [{ data: Object.values(map), backgroundColor: ['#d68c78','#eaddcf','#84a98c','#cdb4db','#9ca3af','#f4a261'], borderWidth: 0 }] }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } });
+
+            const bList = document.getElementById('budgetList'); bList.innerHTML = '';
+            budgets.forEach(b => {
+                const spent = map[b.category] || 0;
+                const pct = Math.min((spent/b.amount)*100, 100);
+                const color = pct>90?'bg-red-400':'bg-sage';
+                const div = document.createElement('div');
+                div.innerHTML = `<div class="flex justify-between text-xs mb-1"><span class="font-bold">${b.category}</span><span>$${format(spent)} / $${format(b.amount)}</span></div><div class="w-full bg-gray-200 h-1.5 rounded-full"><div class="${color} h-full rounded-full" style="width:${pct}%"></div></div>`;
+                bList.appendChild(div);
+            });
+        }
+
+        // 4. Calculations
+        function calcStats() {
+            let balances = {}, mIncome = 0, mExpense = 0, totalAsset = 0, totalDebt = 0;
+            const now = new Date();
+            
+            records.forEach(r => {
+                const amt = Number(r.amount);
+                // Balance calc
+                if(r.type === '轉帳') {
+                    balances[r.account] = (balances[r.account]||0) - amt;
+                    if(r.toAccount) balances[r.toAccount] = (balances[r.toAccount]||0) + amt;
+                } else if (r.type === '支出') {
+                    balances[r.account] = (balances[r.account]||0) - amt;
+                    const d = new Date(r.date);
+                    if(d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear()) mExpense += amt;
+                } else { // Income
+                    balances[r.account] = (balances[r.account]||0) + amt;
+                    const d = new Date(r.date);
+                    if(d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear()) mIncome += amt;
+                }
+            });
+
+            accounts.forEach(a => {
+                const bal = (balances[a.name] || 0) + Number(a.initial);
+                if(a.type === 'bank') totalAsset += bal;
+                else totalDebt += (Number(a.initial) - bal); // Debt is how much of the limit is missing
+            });
+
+            return { balances, totalAsset, totalDebt, mIncome, mExpense };
+        }
+
+        // 5. Actions (CRUD)
+        async function save(coll, data) {
+            try { await window.addDoc(window.collection(window.db, coll), data); toast('Saved'); } catch(e) { alert(e.message); }
+        }
+        async function update(coll, id, data) {
+            try { await window.updateDoc(window.doc(window.db, coll, id), data); toast('Updated'); } catch(e) { alert(e.message); }
+        }
+        window.delDoc = async (coll, id) => { if(confirm('Delete?')) await window.deleteDoc(window.doc(window.db, coll, id)); }
+        window.reimburse = async (id) => { if(confirm('Confirm?')) await update('records', id, { isReimbursed: true }); }
+        window.execRec = async (id) => {
+            const r = recurring.find(x=>x.id===id); if(!r) return;
+            if(confirm('Add Record?')) save('records', { date: new Date().toISOString().split('T')[0], type: r.type, account: r.account, category: r.category, item: r.item, amount: Number(r.amount), isClaimable: false, isReimbursed: false });
+        }
+
+        // Forms
+        document.getElementById('financeForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            const data = {
+                date: document.getElementById('dateInput').value,
+                type: document.getElementById('formType').value,
+                account: document.getElementById('accountInput').value,
+                category: document.getElementById('categoryInput').value || '',
+                item: document.getElementById('itemInput').value,
+                amount: Number(document.getElementById('amountInput').value),
+                isClaimable: document.getElementById('isClaimable').checked,
+                toAccount: document.getElementById('toAccountInput').value || '',
+                isReimbursed: false,
+                timestamp: Date.now()
+            };
+            if(editId) { await update('records', editId, data); cancelEdit(); }
+            else { await save('records', data); }
+            document.getElementById('itemInput').value=''; document.getElementById('amountInput').value='';
+        });
+
+        document.getElementById('accountForm').addEventListener('submit', e => { e.preventDefault(); save('accounts', { name: document.getElementById('accName').value, type: document.getElementById('accType').value, initial: Number(document.getElementById('accInitial').value), deadline: document.getElementById('accDeadline').value }); closeModal(); });
+        document.getElementById('recurringForm').addEventListener('submit', e => { e.preventDefault(); save('recurring', { item: document.getElementById('recItem').value, type: document.getElementById('recType').value, category: document.getElementById('recCategory').value, amount: Number(document.getElementById('recAmount').value), day: document.getElementById('recDay').value, account: document.getElementById('recAccount').value }); closeModal(); });
+        document.getElementById('budgetForm').addEventListener('submit', e => { 
+            e.preventDefault(); 
+            const cat = document.getElementById('budCategory').value;
+            const exist = budgets.find(b=>b.category===cat);
+            const amt = Number(document.getElementById('budAmount').value);
+            if(exist) update('budgets', exist.id, { amount: amt });
+            else save('budgets', { category: cat, amount: amt });
+            closeModal(); 
+        });
+
+        // Helpers
+        function createRow(r) {
+            const isExp = r.type === '支出', isTrans = r.type === '轉帳';
+            let icon = isExp ? 'fa-shopping-bag' : (isTrans ? 'fa-exchange-alt' : 'fa-seedling');
+            let color = isExp ? 'text-terra' : (isTrans ? 'text-gray-500' : 'text-sage');
+            let bg = isExp ? 'bg-[#fcece9]' : (isTrans ? 'bg-gray-100' : 'bg-[#eaf4ed]');
+            const div = document.createElement('div'); div.className = 'paper-card p-3 rounded-xl flex justify-between items-center mb-2 cursor-pointer hover:bg-white/50';
+            div.onclick = () => loadEdit(r);
+            div.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full flex items-center justify-center text-xs ${bg} ${color}"><i class="fas ${icon}"></i></div><div><div class="text-sm font-bold text-ink dark:text-gray-200">${r.item||'轉帳'}</div><div class="text-[10px] text-gray-400">${r.date} · ${r.type==='轉帳'?r.account+' ➜ '+r.toAccount : r.category}</div></div></div><div class="font-serif font-bold ${color}">${isExp?'-':(isTrans?'':'+')}${format(r.amount)}</div>`;
+            return div;
+        }
+
+        function loadEdit(r) {
+            editId = r.id; setFormType(r.type);
+            document.getElementById('dateInput').value = r.date;
+            document.getElementById('accountInput').value = r.account;
+            document.getElementById('amountInput').value = r.amount;
+            document.getElementById('itemInput').value = r.item;
+            document.getElementById('isClaimable').checked = r.isClaimable;
+            if(r.type==='轉帳') document.getElementById('toAccountInput').value = r.toAccount;
+            else document.getElementById('categoryInput').value = r.category;
+            
+            document.getElementById('submitBtn').innerText = "更新紀錄";
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+            switchTab('record');
+        }
+        function cancelEdit() { document.getElementById('financeForm').reset(); editId=null; document.getElementById('submitBtn').innerText="SAVE"; document.getElementById('cancelEditBtn').classList.add('hidden'); setFormType('支出'); }
+
+        function toast(msg) { const t=document.getElementById('toast'); document.getElementById('toastMsg').innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2000); }
+        function format(n) { return new Intl.NumberFormat('zh-TW').format(n); }
+        function initDate() { const n = new Date(); document.getElementById('dateDisplay').innerText = n.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }); const h=n.getHours(); document.getElementById('greeting').innerText = h<12?"Good Morning.":h<18?"Good Afternoon.":"Good Evening."; document.getElementById('dateInput').valueAsDate = n; }
+        
+        // UI Toggles
+        window.setFormType = (t) => {
+            document.getElementById('formType').value=t;
+            ['btnExpense','btnIncome','btnTransfer'].forEach(b=>document.getElementById(b).className='flex-1 text-sm text-gray-400 pb-3 transition');
+            const active = t==='支出'?'btnExpense':(t==='收入'?'btnIncome':'btnTransfer');
+            const color = t==='支出'?'terra':(t==='收入'?'sage':'gray-500');
+            document.getElementById(active).className=`flex-1 text-sm font-bold pb-3 border-b-2 border-${color} text-${color} transition`;
+            
+            document.getElementById('normalFields').classList.toggle('hidden', t==='轉帳');
+            document.getElementById('toAccountField').classList.toggle('hidden', t!=='轉帳');
+            document.getElementById('claimSection').classList.toggle('hidden', t==='轉帳');
+            updateCatOpts();
+        }
+        function updateCatOpts() { document.getElementById('categoryInput').innerHTML = categories[document.getElementById('formType').value]?.map(c=>`<option>${c}</option>`).join('')||''; }
+        window.switchTab = (t, btn) => { document.querySelectorAll('.page-content').forEach(p=>p.classList.remove('active')); document.getElementById('page-'+t).classList.add('active'); if(btn){document.querySelectorAll('.nav-active').forEach(b=>b.classList.remove('nav-active')); btn.classList.add('nav-active');} if(t==='stats') renderStats(); }
+        window.openModal = (id) => { document.getElementById('modalOverlay').classList.remove('hidden'); document.getElementById(id).classList.remove('hidden'); }
+        window.closeModal = () => { document.getElementById('modalOverlay').classList.add('hidden'); document.querySelectorAll('#modalOverlay > div').forEach(d=>d.classList.add('hidden')); }
+        window.toggleView = () => { document.getElementById('calendarView').classList.toggle('hidden'); }
+        window.toggleDeadline = () => { document.getElementById('deadlineField').classList.toggle('hidden', document.getElementById('accType').value !== 'credit'); }
+        window.changeMonth = (n) => { /* Cal logic skipped for brevity, focused on Firebase */ };
+        
+        // PIN
+        window.enterPin = (n) => {
+            if(n==='del') currentPin=currentPin.slice(0,-1); else if(currentPin.length<4) currentPin+=n;
+            for(let i=1;i<=4;i++) document.getElementById('dot'+i).className = i<=currentPin.length?'pin-dot filled':'pin-dot';
+            if(currentPin.length===4) {
+                if(!storedPin) { localStorage.setItem('lumiere_pin', currentPin); storedPin=currentPin; alert('PIN Set!'); document.getElementById('lockScreen').classList.add('hidden'); }
+                else if(currentPin===storedPin) document.getElementById('lockScreen').classList.add('hidden');
+                else { currentPin=''; updatePinDots(); alert('Wrong PIN'); }
+            }
+        }
+        function updatePinDots() { for(let i=1;i<=4;i++) document.getElementById('dot'+i).className = i<=currentPin.length?'pin-dot filled':'pin-dot'; }
+        window.resetPin = () => { if(confirm('Reset PIN?')) { localStorage.removeItem('lumiere_pin'); location.reload(); } }
+        window.exportCSV = () => { const csv = Papa.unparse(records); const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob(["\uFEFF"+csv], {type: "text/csv;charset=utf-8;"})); link.download = "Lumiere.csv"; link.click(); }
+        
+        document.getElementById('themeToggle').addEventListener('click', () => { document.documentElement.classList.toggle('dark'); document.getElementById('themeToggleBtn').children[0].classList.toggle('translate-x-4'); });
+    </script>
+
+    <!-- Modals Overlay -->
+    <div id="modalOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-6">
+        <div id="accountModal" class="paper-card w-full max-w-xs rounded-2xl p-6 hidden">
+            <h3 class="font-serif font-bold mb-4 text-center">新增帳戶</h3>
+            <form id="accountForm" class="space-y-4">
+                <input type="text" id="accName" placeholder="名稱" class="elegant-input text-sm" required>
+                <select id="accType" class="elegant-input text-sm" onchange="toggleDeadline()"><option value="bank">銀行 / 現金</option><option value="credit">信用卡</option></select>
+                <input type="number" id="accInitial" placeholder="初始金額 / 額度" class="elegant-input text-sm" required>
+                <div id="deadlineField" class="hidden flex items-center"><span class="text-xs text-gray-400 mr-2">每月</span><input type="number" id="accDeadline" placeholder="27" min="1" max="31" class="bg-transparent outline-none w-10 border-b text-center"><span class="text-xs text-gray-400">號繳款</span></div>
+                <div class="flex gap-2 pt-2"><button type="button" onclick="closeModal()" class="flex-1 py-2 text-xs bg-gray-100 rounded-lg">取消</button><button type="submit" class="flex-1 py-2 text-xs bg-ink text-white rounded-lg">儲存</button></div>
+            </form>
+        </div>
+        <div id="recurringModal" class="paper-card w-full max-w-xs rounded-2xl p-6 hidden">
+            <h3 class="font-serif font-bold mb-4 text-center">固定收支</h3>
+            <form id="recurringForm" class="space-y-4">
+                <input type="text" id="recItem" placeholder="項目" class="elegant-input text-sm" required>
+                <div class="flex gap-2"><select id="recType" class="elegant-input w-1/3 text-sm"><option value="支出">支出</option><option value="收入">收入</option></select><select id="recCategory" class="elegant-input w-2/3 text-sm"></select></div>
+                <div class="flex gap-2"><input type="number" id="recAmount" placeholder="金額" class="elegant-input w-1/2 text-sm" required><div class="w-1/2 flex items-center"><span class="text-xs text-gray-400 mr-1">每月</span><input type="number" id="recDay" placeholder="5" class="bg-transparent outline-none w-full text-sm border-b"><span class="text-xs text-gray-400">號</span></div></div>
+                <select id="recAccount" class="elegant-input text-sm"></select>
+                <div class="flex gap-2 pt-2"><button type="button" onclick="closeModal()" class="flex-1 py-2 text-xs bg-gray-100 rounded-lg">取消</button><button type="submit" class="flex-1 py-2 text-xs bg-ink text-white rounded-lg">儲存</button></div>
+            </form>
+        </div>
+        <div id="budgetModal" class="paper-card w-full max-w-xs rounded-2xl p-6 hidden">
+            <h3 class="font-serif font-bold mb-4 text-center">分類預算</h3>
+            <form id="budgetForm" class="space-y-4">
+                <select id="budCategory" class="elegant-input text-sm" required></select>
+                <input type="number" id="budAmount" placeholder="每月限額" class="elegant-input text-sm" required>
+                <div class="flex gap-2 pt-2"><button type="button" onclick="closeModal()" class="flex-1 py-2 text-xs bg-gray-100 rounded-lg">取消</button><button type="submit" class="flex-1 py-2 text-xs bg-ink text-white rounded-lg">儲存</button></div>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>
