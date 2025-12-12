@@ -3,633 +3,548 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lumière 2.0</title>
+    <title>Lumière</title>
     <meta name="apple-mobile-web-app-title" content="Lumière">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#fdfcf8">
+    <meta name="theme-color" content="#f7f5f0">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%23d68c78'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='300' fill='white'%3EL%3C/text%3E%3C/svg%3E">
 
-    <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script> 
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600&family=Lato:wght@300;400&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: { serif: ['"Noto Serif TC"', 'serif'], sans: ['"Lato"', 'sans-serif'], display: ['"Playfair Display"', 'serif'] },
-                    colors: { 'paper': '#fdfcf8', 'ink': '#2c2c2c', 'sage': '#84a98c', 'terra': '#d68c78', 'sand': '#eaddcf' }
-                }
-            }
-        }
+        tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { serif: ['"Noto Serif TC"', 'serif'], sans: ['"Lato"', 'sans-serif'], display: ['"Playfair Display"', 'serif'] }, colors: { 'paper': '#f7f5f0', 'ink': '#2c2c2c', 'sage': '#84a98c', 'terra': '#d68c78', 'sand': '#eaddcf' } } } }
     </script>
     <style>
-        body { font-family: 'Lato', 'Noto Serif TC', sans-serif; background-color: #fdfcf8; color: #2c2c2c; -webkit-tap-highlight-color: transparent; overflow: hidden; }
+        body { font-family: 'Lato', 'Noto Serif TC', sans-serif; background-color: #f7f5f0; color: #2c2c2c; -webkit-tap-highlight-color: transparent; overflow: hidden; }
         .dark body { background-color: #1a1a1a; color: #e5e5e5; }
-        .paper-card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 20px -5px rgba(0,0,0,0.05); }
-        .dark .paper-card { background: rgba(40, 40, 40, 0.6); border: 1px solid rgba(255, 255, 255, 0.05); }
-        .elegant-input { border: none; background: transparent; border-bottom: 1px solid #d1d5db; padding: 12px 0; outline: none; transition: 0.3s; color: #4b5563; width: 100%; }
+        .texture-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.5; background-image: radial-gradient(#e0e0e0 1px, transparent 1px); background-size: 20px 20px; }
+        .dark .texture-bg { opacity: 0.1; background-image: radial-gradient(#555 1px, transparent 1px); }
+        .paper-card { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 4px 15px -3px rgba(0,0,0,0.05); }
+        .dark .paper-card { background: rgba(40, 40, 40, 0.7); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .elegant-input { border: none; background: transparent; border-bottom: 1px solid #d1d5db; padding: 10px 0; outline: none; transition: 0.3s; color: #4b5563; }
         .elegant-input:focus { border-bottom-color: #d68c78; }
         .dark .elegant-input { border-bottom-color: #555; color: #eee; }
         .page-content { display: none; height: 100%; overflow-y: auto; padding-bottom: 100px; padding-top: 10px; animation: fadeIn 0.3s ease-out; }
         .page-content.active { display: block; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .cal-day { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; border-radius: 8px; cursor: pointer; position: relative; }
+        .cal-day.today { background-color: #eaddcf; font-weight: bold; }
+        .cal-day.has-data::after { content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px; background-color: #d68c78; border-radius: 50%; }
+        .nav-icon { transition: all 0.3s; font-size: 1.2rem; }
+        .nav-active .nav-icon { transform: translateY(-3px); color: #d68c78; }
+        .nav-label { font-size: 9px; margin-top: 2px; letter-spacing: 0.05em; transition: color 0.3s; }
+        .nav-active .nav-label { color: #d68c78; font-weight: bold; }
         
-        /* Toast Notification */
-        #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px); background: #2c2c2c; color: white; padding: 10px 20px; border-radius: 20px; font-size: 12px; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-        .dark #toast { background: #eaddcf; color: #2c2c2c; }
-
+        /* Loading Overlay Improved */
+        #loadingOverlay { position: fixed; inset: 0; background: rgba(255,255,255,0.95); z-index: 90; display: flex; flex-direction: column; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .dark #loadingOverlay { background: rgba(0,0,0,0.95); }
+        #errorBox { display: none; margin-top: 20px; padding: 15px; background: #fee2e2; border: 1px solid #ef4444; border-radius: 10px; color: #b91c1c; font-size: 12px; max-width: 80%; text-align: center; }
+        
         /* Lock Screen */
-        #lockScreen { position: fixed; inset: 0; background: #fdfcf8; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #lockScreen { position: fixed; inset: 0; background: #f7f5f0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.3s; }
         .dark #lockScreen { background: #1a1a1a; }
         .pin-dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #d68c78; transition: 0.2s; }
         .pin-dot.filled { background: #d68c78; }
-        .keypad-btn { width: 65px; height: 65px; border-radius: 50%; font-size: 22px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.03); margin: 8px; active:scale-95; cursor: pointer; }
+        .keypad-btn { width: 60px; height: 60px; border-radius: 50%; font-size: 20px; font-family: 'Playfair Display'; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.5); margin: 8px; active:scale-95; cursor: pointer; }
         .dark .keypad-btn { background: rgba(255,255,255,0.1); color: white; }
     </style>
 </head>
 <body>
-
-    <!-- FIREBASE MODULE -->
+    <!-- FIREBASE SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, updateDoc, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // 🟢🟢🟢 請在這裡貼上你的 Firebase Config 🟢🟢🟢
+        // ✅ Firebase Config (從你提供的資訊填入)
         const firebaseConfig = {
-  apiKey: "AIzaSyBhassa0kIlzdot1yBDoQw-UxMihQKrVjk",
-  authDomain: "lumiere-bb65c.firebaseapp.com",
-  projectId: "lumiere-bb65c",
-  storageBucket: "lumiere-bb65c.firebasestorage.app",
-  messagingSenderId: "117730167982",
-  appId: "1:117730167982:web:2dde374c42300c18d7713f"
+            apiKey: "AIzaSyBhassa0kIlzdot1yBDoQw-UxMihQKrVjk",
+            authDomain: "lumiere-bb65c.firebaseapp.com",
+            projectId: "lumiere-bb65c",
+            storageBucket: "lumiere-bb65c.firebasestorage.app",
+            messagingSenderId: "117730167982",
+            appId: "1:117730167982:web:2dde374c42300c18d7713f"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // Export to global for HTML inline JS
-        window.db = db;
-        window.collection = collection;
-        window.addDoc = addDoc;
-        window.onSnapshot = onSnapshot;
-        window.updateDoc = updateDoc;
-        window.deleteDoc = deleteDoc;
-        window.doc = doc;
-        window.query = query;
-        window.orderBy = orderBy;
-
-        console.log("Firebase v10 Initialized");
-        window.startApp(); // Start the app logic
+        try {
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            window.db = db;
+            window.collection = collection;
+            window.addDoc = addDoc;
+            window.getDocs = getDocs;
+            window.onSnapshot = onSnapshot; 
+            window.updateDoc = updateDoc;
+            window.deleteDoc = deleteDoc;
+            window.doc = doc;
+            window.query = query;
+            window.orderBy = orderBy;
+            
+            console.log("Firebase initialized");
+            window.initApp(); 
+        } catch (e) {
+            document.getElementById('loadingText').innerText = "系統初始化失敗";
+            document.getElementById('errorBox').style.display = 'block';
+            document.getElementById('errorBox').innerHTML = `Config 錯誤: ${e.message}`;
+        }
     </script>
 
-    <!-- 🔒 PIN Lock -->
+    <div class="texture-bg"></div>
+
+    <!-- Lock Screen -->
     <div id="lockScreen">
-        <h1 class="font-serif italic text-4xl mb-8 text-ink dark:text-white">Lumière</h1>
-        <p id="lockMsg" class="text-xs text-gray-400 mb-8 uppercase tracking-widest">Enter Passcode</p>
-        <div class="flex gap-6 mb-12"><div class="pin-dot" id="dot1"></div><div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div><div class="pin-dot" id="dot4"></div></div>
-        <div class="grid grid-cols-3 gap-4">
+        <h1 class="font-serif italic text-3xl mb-8 text-ink dark:text-white">Lumière</h1>
+        <p id="lockMsg" class="text-xs text-gray-400 mb-6">Enter PIN</p>
+        <div class="flex gap-4 mb-10"><div class="pin-dot" id="dot1"></div><div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div><div class="pin-dot" id="dot4"></div></div>
+        <div class="grid grid-cols-3 gap-2">
             <div class="keypad-btn" onclick="enterPin(1)">1</div><div class="keypad-btn" onclick="enterPin(2)">2</div><div class="keypad-btn" onclick="enterPin(3)">3</div>
             <div class="keypad-btn" onclick="enterPin(4)">4</div><div class="keypad-btn" onclick="enterPin(5)">5</div><div class="keypad-btn" onclick="enterPin(6)">6</div>
             <div class="keypad-btn" onclick="enterPin(7)">7</div><div class="keypad-btn" onclick="enterPin(8)">8</div><div class="keypad-btn" onclick="enterPin(9)">9</div>
-            <div class="keypad-btn opacity-0"></div><div class="keypad-btn" onclick="enterPin(0)">0</div><div class="keypad-btn" onclick="enterPin('del')"><i class="fas fa-backspace"></i></div>
+            <div class="keypad-btn opacity-0"></div><div class="keypad-btn" onclick="enterPin(0)">0</div><div class="keypad-btn" onclick="enterPin('del')"><i class="fas fa-backspace text-sm"></i></div>
         </div>
+        <button onclick="forgetPin()" class="mt-8 text-xs text-gray-300 underline">忘記密碼?</button>
     </div>
 
-    <!-- 🍞 Toast Notification -->
-    <div id="toast"><i class="fas fa-check-circle mr-2"></i><span id="toastMsg">Success</span></div>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden">
+        <div id="loadingSpinner" class="animate-spin rounded-full h-10 w-10 border-b-2 border-terra"></div>
+        <p id="loadingText" class="text-xs text-gray-500 mt-4 animate-pulse">正在同步資料庫...</p>
+        <div id="errorBox"></div>
+        <button id="retryBtn" onclick="location.reload()" class="hidden mt-4 px-4 py-2 bg-ink text-white rounded-lg text-xs">重新連線</button>
+        <button id="forceEntryBtn" onclick="forceEntry()" class="hidden mt-2 px-4 py-2 text-gray-400 border border-gray-300 rounded-lg text-xs">強制進入 (離線瀏覽)</button>
+    </div>
 
-    <!-- Main Container -->
+    <!-- Main Content -->
     <div class="w-full h-full max-w-md mx-auto relative z-10 p-5 pt-8 flex flex-col">
-        
-        <!-- Header -->
-        <div class="flex justify-between items-center mb-6 flex-shrink-0">
-            <h1 class="font-serif text-2xl font-bold tracking-wider text-ink dark:text-gray-100 flex items-center gap-2">
-                <i class="fas fa-feather-alt text-terra"></i> Lumière
-            </h1>
-            <div class="flex gap-4">
-                <button onclick="switchTab('settings')" class="text-gray-400 hover:text-terra transition"><i class="fas fa-cog text-xl"></i></button>
+        <div class="flex justify-between items-center mb-4 flex-shrink-0">
+            <h1 class="font-serif text-2xl font-bold tracking-wider text-ink dark:text-gray-100">Lumière</h1>
+            <div class="flex gap-3">
+                <button onclick="window.location.reload()" class="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-terra transition"><i class="fas fa-sync-alt"></i></button>
+                <button id="themeToggle" class="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 transition"><i class="fas fa-moon dark:hidden"></i><i class="fas fa-sun hidden dark:block text-yellow-300"></i></button>
             </div>
         </div>
 
-        <!-- 🏠 PAGE: HOME -->
+        <!-- PAGE 0: Home -->
         <div id="page-home" class="page-content active scrollbar-hide">
-            <div class="mb-6"><p class="text-xs text-gray-400 tracking-widest uppercase mb-1" id="dateDisplay">DATE</p><h2 class="text-3xl font-serif text-ink dark:text-white" id="greeting">Hello.</h2></div>
-            
-            <!-- Net Worth Card -->
-            <div class="paper-card rounded-3xl p-6 mb-6 relative overflow-hidden group">
-                <div class="absolute right-0 top-0 w-32 h-32 bg-gradient-to-bl from-sand/50 to-transparent rounded-bl-full pointer-events-none"></div>
-                <p class="text-[10px] text-gray-400 uppercase tracking-[0.2em] mb-2">Total Net Worth</p>
-                <h3 class="font-serif italic text-4xl text-ink dark:text-white mb-6" id="netWorth">$...</h3>
-                <div class="flex gap-4 border-t border-gray-100 dark:border-gray-700 pt-4">
-                    <div class="flex-1"><p class="text-[10px] text-gray-400 mb-1">Assets</p><p class="font-bold text-sage text-lg" id="totalAsset">...</p></div>
-                    <div class="flex-1 border-l border-gray-100 dark:border-gray-700 pl-4"><p class="text-[10px] text-gray-400 mb-1">Debts</p><p class="font-bold text-terra text-lg" id="totalDebt">...</p></div>
+            <div class="mb-6 mt-2"><p class="text-xs text-gray-400 tracking-widest uppercase mb-1" id="dateDisplay">DATE</p><h2 class="text-3xl font-serif text-ink dark:text-white" id="greeting">Hello.</h2></div>
+            <div class="paper-card rounded-2xl p-6 mb-6 relative overflow-hidden">
+                <p class="text-[10px] text-gray-400 uppercase tracking-[0.2em] mb-2">Net Worth</p>
+                <h3 class="font-serif italic text-4xl text-ink dark:text-white mb-4" id="netWorth">...</h3>
+                <div class="flex gap-2">
+                    <div class="flex-1 bg-white/50 dark:bg-white/5 p-3 rounded-xl"><p class="text-[10px] text-gray-400">總資產</p><p class="font-bold text-sage text-lg" id="totalAsset">...</p></div>
+                    <div class="flex-1 bg-white/50 dark:bg-white/5 p-3 rounded-xl"><p class="text-[10px] text-gray-400">總負債</p><p class="font-bold text-terra text-lg" id="totalDebt">...</p></div>
                 </div>
             </div>
-
-            <!-- Monthly Progress -->
-            <div class="paper-card rounded-2xl p-5 mb-6 space-y-4">
-                <h4 class="text-xs text-gray-400 font-bold uppercase tracking-widest mb-2">本月概況</h4>
-                <div><div class="flex justify-between text-xs mb-1"><span class="text-gray-500">收入 Income</span><span class="font-bold text-sage" id="homeIncome">$0</span></div><div class="w-full bg-gray-100 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden"><div class="bg-sage h-full rounded-full transition-all duration-1000" style="width: 0%" id="barIncome"></div></div></div>
-                <div><div class="flex justify-between text-xs mb-1"><span class="text-gray-500">支出 Expense</span><span class="font-bold text-terra" id="homeExpense">$0</span></div><div class="w-full bg-gray-100 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden"><div class="bg-terra h-full rounded-full transition-all duration-1000" style="width: 0%" id="barExpense"></div></div></div>
+            <div class="paper-card rounded-xl p-4 mb-6"><h4 class="text-xs text-gray-400 uppercase tracking-widest mb-4">資產趨勢</h4><div class="h-40 relative"><canvas id="netWorthChart"></canvas></div></div>
+            <div class="paper-card rounded-xl p-4 mb-6 space-y-4">
+                <div><div class="flex justify-between text-xs mb-1"><span class="text-gray-500">本月收入</span><span class="font-bold text-sage" id="homeIncome">$0</span></div><div class="w-full bg-gray-100 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden"><div class="bg-sage h-full rounded-full" style="width: 0%" id="barIncome"></div></div></div>
+                <div><div class="flex justify-between text-xs mb-1"><span class="text-gray-500">本月支出</span><span class="font-bold text-terra" id="homeExpense">$0</span></div><div class="w-full bg-gray-100 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden"><div class="bg-terra h-full rounded-full" style="width: 0%" id="barExpense"></div></div></div>
             </div>
-
-            <!-- Recent Transactions (Preview) -->
-            <h4 class="text-xs text-gray-400 font-bold uppercase tracking-widest mb-3 pl-1">Recent Activity</h4>
-            <div id="homeRecentList" class="space-y-2 pb-10"></div>
+            <button onclick="switchTab('record', document.getElementById('nav-record'))" class="w-full py-4 rounded-xl bg-ink text-white dark:bg-white dark:text-black shadow-lg active:scale-95 transition flex items-center justify-center gap-2 group"><span class="font-serif tracking-widest text-sm">開始記帳</span><i class="fas fa-arrow-right group-hover:translate-x-1 transition"></i></button>
         </div>
 
-        <!-- 📝 PAGE: RECORD -->
+        <!-- PAGE 1: Record -->
         <div id="page-record" class="page-content scrollbar-hide">
-            <!-- Search & View Toggle -->
-            <div class="flex gap-2 mb-4">
-                <div class="relative flex-1">
-                    <i class="fas fa-search absolute left-3 top-3.5 text-gray-400 text-xs"></i>
-                    <input type="text" id="searchInput" placeholder="搜尋..." class="w-full bg-white/50 dark:bg-white/5 border border-gray-200 dark:border-gray-700 rounded-xl py-2.5 pl-9 pr-4 text-sm outline-none focus:border-terra transition" onkeyup="renderTransactionList()">
-                </div>
-                <button onclick="toggleView()" id="viewToggleBtn" class="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 text-gray-500"><i class="fas fa-calendar-alt"></i></button>
-            </div>
-
-            <!-- Calendar View (Hidden by default) -->
-            <div id="calendarView" class="hidden mb-6 animate-fade-in paper-card rounded-2xl p-4">
-                <div class="flex justify-between items-center mb-4">
-                    <button onclick="changeMonth(-1)"><i class="fas fa-chevron-left text-xs"></i></button><span class="font-serif font-bold" id="calMonthYear">...</span><button onclick="changeMonth(1)"><i class="fas fa-chevron-right text-xs"></i></button>
-                </div>
-                <div class="grid grid-cols-7 gap-1 text-center mb-2 text-[10px] text-gray-400"><div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div></div>
-                <div id="calendarGrid" class="grid grid-cols-7 gap-1"></div>
-            </div>
-
-            <!-- Input Form -->
             <div id="recordFormContainer" class="paper-card rounded-2xl p-6 mb-6 relative">
                 <input type="hidden" id="editId">
-                <div class="flex gap-2 mb-6 border-b border-gray-100 dark:border-gray-700 pb-1">
-                    <button class="flex-1 text-sm font-bold pb-3 border-b-2 border-terra text-terra transition" id="btnExpense" onclick="setFormType('支出')">支出</button>
-                    <button class="flex-1 text-sm text-gray-400 pb-3 transition" id="btnIncome" onclick="setFormType('收入')">收入</button>
-                    <button class="flex-1 text-sm text-gray-400 pb-3 transition" id="btnTransfer" onclick="setFormType('轉帳')">轉帳</button>
+                <div class="flex gap-2 mb-5 border-b border-gray-100 dark:border-gray-700 pb-2">
+                    <button type="button" class="flex-1 text-sm font-bold pb-2 border-b-2 border-terra text-terra transition" id="btnExpense" onclick="setFormType('支出')">支出</button>
+                    <button type="button" class="flex-1 text-sm text-gray-400 pb-2 transition" id="btnIncome" onclick="setFormType('收入')">收入</button>
+                    <button type="button" class="flex-1 text-sm text-gray-400 pb-2 transition" id="btnTransfer" onclick="setFormType('轉帳')">轉帳</button>
                 </div>
-                <form id="financeForm" class="space-y-5">
+                <form id="financeForm" class="space-y-4">
                     <input type="hidden" id="formType" value="支出">
-                    <div class="flex gap-4">
-                        <input type="date" id="dateInput" class="elegant-input text-sm font-serif" required>
-                        <select id="accountInput" class="elegant-input text-sm bg-transparent" required></select>
-                    </div>
-                    
-                    <div id="transferField" class="hidden">
-                        <select id="toAccountInput" class="elegant-input text-sm bg-transparent"></select>
-                        <p class="text-[10px] text-gray-400 mt-1">轉入帳戶 (To)</p>
-                    </div>
-
-                    <div class="flex gap-4" id="normalFields">
-                        <select id="categoryInput" class="elegant-input text-sm bg-transparent w-1/2"></select>
-                        <input type="text" id="itemInput" placeholder="項目內容..." class="elegant-input text-sm w-1/2">
-                    </div>
-
-                    <div class="relative">
-                        <span class="absolute top-3 left-0 text-xl text-gray-400 font-serif">$</span>
-                        <input type="number" id="amountInput" placeholder="0" class="elegant-input pl-6 text-3xl font-serif text-ink dark:text-white" required>
-                    </div>
-
-                    <div class="flex items-center gap-2" id="claimSection">
-                        <input type="checkbox" id="isClaimable" class="w-4 h-4 rounded border-gray-300 text-terra focus:ring-terra">
-                        <label for="isClaimable" class="text-xs text-gray-500">公司代墊款 (報帳)</label>
-                    </div>
-
-                    <div class="flex gap-2 pt-2">
-                        <button type="button" id="cancelEditBtn" onclick="cancelEdit()" class="hidden w-1/3 bg-gray-100 text-gray-500 py-3 rounded-xl text-sm">取消</button>
-                        <button type="submit" id="submitBtn" class="w-full bg-ink dark:bg-white text-white dark:text-black py-3.5 rounded-xl shadow-lg active:scale-95 transition font-serif tracking-widest text-sm">SAVE</button>
-                    </div>
+                    <div class="flex gap-4"><input type="date" id="dateInput" class="elegant-input w-[40%] text-sm font-serif" required><div class="w-[60%]"><select id="accountInput" class="elegant-input w-full text-sm bg-transparent cursor-pointer" required></select><p class="text-[9px] text-gray-400 mt-1" id="fromLabel">從此帳戶扣款</p></div></div>
+                    <div id="toAccountField" class="hidden"><select id="toAccountInput" class="elegant-input w-full text-sm bg-transparent cursor-pointer"></select><p class="text-[9px] text-gray-400 mt-1">轉入至此帳戶</p></div>
+                    <div class="flex gap-4" id="normalFields"><select id="categoryInput" class="elegant-input w-[40%] text-sm bg-transparent cursor-pointer"></select><input type="text" id="itemInput" placeholder="項目內容..." class="elegant-input w-[60%] text-sm"></div>
+                    <div class="relative"><span class="absolute top-2 left-0 text-lg text-gray-400 font-serif">$</span><input type="number" id="amountInput" placeholder="0" class="elegant-input w-full pl-6 text-2xl font-serif text-ink dark:text-white" required></div>
+                    <div class="flex items-center gap-2 mt-2" id="claimSection"><input type="checkbox" id="isClaimable" class="w-4 h-4 rounded border-gray-300 text-terra focus:ring-terra"><label for="isClaimable" class="text-xs text-gray-500">標記為代墊款 (報帳用)</label></div>
+                    <div class="flex gap-2"><button type="button" id="cancelEditBtn" onclick="cancelEdit()" class="hidden w-1/3 mt-2 bg-gray-200 text-gray-600 py-3 rounded-xl text-sm">取消</button><button type="submit" id="submitBtn" class="w-full mt-2 bg-ink dark:bg-gray-200 text-white dark:text-gray-900 py-3 rounded-xl shadow-lg active:scale-95 transition font-serif tracking-widest text-sm">記上一筆</button></div>
                 </form>
             </div>
-
-            <!-- List -->
-            <div id="transactionList" class="space-y-3 pb-20"></div>
+            <div class="relative mb-4"><i class="fas fa-search absolute left-3 top-3 text-gray-400 text-xs"></i><input type="text" id="searchInput" placeholder="搜尋紀錄..." class="w-full bg-white/50 dark:bg-white/5 border border-gray-200 dark:border-gray-700 rounded-xl py-2.5 pl-9 pr-4 text-sm outline-none focus:border-terra transition" onkeyup="renderTransactionList()"></div>
+            <div id="transactionList" class="space-y-3 pb-10"><div class="text-center text-gray-400 text-xs py-10 font-serif italic">Loading...</div></div>
         </div>
 
-        <!-- 💼 PAGE: ASSETS -->
+        <!-- PAGE 2: Assets -->
         <div id="page-assets" class="page-content scrollbar-hide">
-            <div class="flex justify-between items-end mb-6 px-1">
-                <h3 class="font-serif text-lg text-ink dark:text-white pl-3 border-l-2 border-gray-400">資產指揮中心</h3>
-                <button onclick="openModal('accountModal')" class="text-xs bg-ink text-white dark:bg-white dark:text-black px-4 py-2 rounded-lg shadow active:scale-95 transition"><i class="fas fa-plus mr-1"></i> 帳戶</button>
-            </div>
-            <div class="mb-8"><h4 class="text-xs text-gray-400 font-bold mb-3 pl-2">現金與銀行 Bank</h4><div id="bankList" class="space-y-3"></div></div>
-            <div><h4 class="text-xs text-gray-400 font-bold mb-3 pl-2">信用卡 Credit</h4><div id="creditList" class="space-y-3"></div></div>
+            <div class="flex justify-between items-end mb-4 px-1"><h3 class="font-serif text-lg text-ink dark:text-white pl-3 border-l-2 border-gray-400">資產總覽</h3><button onclick="openAccountModal()" class="text-xs bg-ink text-white dark:bg-white dark:text-black px-3 py-1.5 rounded-lg shadow active:scale-95 transition"><i class="fas fa-plus mr-1"></i> 帳戶</button></div>
+            <div class="mb-6"><h4 class="text-xs text-gray-400 font-bold mb-2 pl-2">現金與銀行</h4><div id="bankList" class="space-y-3"></div></div>
+            <div><h4 class="text-xs text-gray-400 font-bold mb-2 pl-2">信用卡與負債</h4><div id="creditList" class="space-y-3"></div></div>
         </div>
 
-        <!-- 📊 PAGE: STATS -->
+        <!-- PAGE 3: Stats -->
         <div id="page-stats" class="page-content scrollbar-hide">
-            <h3 class="font-serif text-lg text-ink dark:text-white mb-6 pl-3 border-l-2 border-sage">收支分析</h3>
+            <h3 class="font-serif text-lg text-ink dark:text-white mb-4 pl-3 border-l-2 border-sage">收支分析</h3>
             <div class="paper-card rounded-2xl p-5 mb-6"><h4 class="text-xs text-gray-400 uppercase tracking-widest mb-4 text-center">本月支出分佈</h4><div class="h-64 relative"><canvas id="categoryChart"></canvas></div></div>
-            
-            <div class="flex justify-between items-end mb-4 px-1"><h3 class="font-serif text-lg text-ink dark:text-white pl-3 border-l-2 border-terra">預算控制</h3><button onclick="openModal('budgetModal')" class="text-xs border border-gray-300 px-3 py-1 rounded-lg">設定</button></div>
+            <div class="flex justify-between items-end mb-4 mt-8 px-1"><h3 class="font-serif text-lg text-ink dark:text-white pl-3 border-l-2 border-terra">分類預算</h3><button onclick="openBudgetModal()" class="text-xs bg-white border border-gray-300 px-3 py-1 rounded-lg shadow-sm active:scale-95 transition dark:bg-gray-700 dark:border-gray-600 dark:text-white">設定</button></div>
             <div id="budgetList" class="space-y-4 mb-8"></div>
         </div>
 
-        <!-- ⚙️ PAGE: SETTINGS / MANAGE -->
-        <div id="page-settings" class="page-content scrollbar-hide">
-            
-            <!-- Recurring -->
-            <div class="flex justify-between items-end mb-4 px-1"><h3 class="font-serif text-lg text-ink dark:text-white pl-3 border-l-2 border-clay">固定收支</h3><button onclick="openModal('recurringModal')" class="text-xs bg-ink text-white dark:bg-white dark:text-black px-3 py-1.5 rounded-lg shadow"><i class="fas fa-plus mr-1"></i> 新增</button></div>
-            <div id="recurringList" class="space-y-3 mb-8"></div>
-
-            <!-- Claims -->
-            <div id="claimAlert" class="hidden paper-card rounded-xl p-4 mb-4 border-l-4 border-terra flex justify-between items-center"><span class="text-xs text-terra font-bold tracking-wide">待核銷代墊款</span><div class="flex items-center gap-2"><span id="claimAmount" class="font-serif text-lg text-terra">$0</span></div></div>
-            <div id="claimList" class="space-y-3 mb-8"></div>
-
-            <!-- Data & Security -->
-            <h3 class="font-serif text-lg text-ink dark:text-white mt-8 mb-4 pl-3 border-l-2 border-blue-400">系統設定</h3>
-            <div class="paper-card rounded-xl p-4 space-y-4">
-                <div class="flex justify-between items-center"><div><div class="font-bold text-sm">資料備份 (CSV)</div><div class="text-[10px] text-gray-400">下載所有紀錄</div></div><button onclick="exportCSV()" class="text-xs bg-blue-50 text-blue-600 px-3 py-2 rounded-lg"><i class="fas fa-download"></i></button></div>
-                <div class="flex justify-between items-center pt-4 border-t border-gray-100 dark:border-gray-700"><div><div class="font-bold text-sm">重設 PIN 碼</div><div class="text-[10px] text-gray-400">清除目前鎖定密碼</div></div><button onclick="resetPin()" class="text-xs border border-gray-300 px-3 py-2 rounded-lg">重設</button></div>
-                <div class="flex justify-between items-center pt-4 border-t border-gray-100 dark:border-gray-700"><div><div class="font-bold text-sm">切換深色模式</div></div><button id="themeToggleBtn" class="text-xs bg-gray-100 dark:bg-gray-700 w-10 h-6 rounded-full relative"><div class="absolute w-4 h-4 bg-white rounded-full top-1 left-1 dark:left-5 transition-all"></div></button></div>
+        <!-- PAGE 4: Manage -->
+        <div id="page-manage" class="page-content scrollbar-hide">
+            <div class="flex justify-between items-end mb-4 px-1"><h3 class="font-serif text-lg text-ink dark:text-white pl-3 border-l-2 border-clay">固定收支</h3><button onclick="openRecurringModal()" class="text-xs bg-ink text-white dark:bg-white dark:text-black px-3 py-1.5 rounded-lg shadow active:scale-95 transition"><i class="fas fa-plus mr-1"></i> 新增</button></div>
+            <div id="recurringList" class="space-y-3 mb-8"><p class="text-center text-gray-400 text-xs py-4">無資料</p></div>
+            <h3 class="font-serif text-lg text-ink dark:text-white mb-4 pl-3 border-l-2 border-terra">待核銷清單</h3>
+            <div id="claimAlert" class="hidden paper-card rounded-xl p-3 mb-4 border-l-4 border-terra flex justify-between items-center"><span class="text-xs text-terra font-bold tracking-wide">代墊款項 (待核銷)</span><div class="flex items-center gap-2"><span id="claimAmount" class="font-serif text-lg text-terra">$0</span></div></div>
+            <div id="claimList" class="space-y-3 pb-10"></div>
+            <div class="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+                <button onclick="exportCSV()" class="w-full py-3 text-xs text-blue-500 border border-blue-200 rounded-xl mb-3">匯出 CSV</button>
+                <button onclick="resetPin()" class="w-full py-3 text-xs text-gray-400 border border-gray-300 rounded-xl">重設 PIN 碼</button>
             </div>
         </div>
-
     </div>
 
     <!-- Modals -->
-    <div id="modalOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-6">
-        <!-- Account Modal -->
-        <div id="accountModal" class="paper-card w-full max-w-xs rounded-2xl p-6 hidden">
-            <h3 class="font-serif font-bold mb-4 text-center">新增帳戶</h3>
-            <form id="accountForm" class="space-y-4">
-                <input type="text" id="accName" placeholder="名稱 (如: 台新黑狗卡)" class="elegant-input text-sm" required>
-                <select id="accType" class="elegant-input text-sm" onchange="toggleDeadline()"><option value="bank">銀行 / 現金</option><option value="credit">信用卡</option></select>
-                <input type="number" id="accInitial" placeholder="初始金額 / 額度" class="elegant-input text-sm" required>
-                <div id="deadlineField" class="hidden flex items-center"><span class="text-xs text-gray-400 mr-2">每月</span><input type="number" id="accDeadline" placeholder="27" min="1" max="31" class="bg-transparent outline-none w-10 border-b text-center"><span class="text-xs text-gray-400">號繳款</span></div>
-                <div class="flex gap-2 pt-2"><button type="button" onclick="closeModal()" class="flex-1 py-2 text-xs bg-gray-100 rounded-lg">取消</button><button type="submit" class="flex-1 py-2 text-xs bg-ink text-white rounded-lg">儲存</button></div>
-            </form>
-        </div>
-        <!-- Recurring Modal -->
-        <div id="recurringModal" class="paper-card w-full max-w-xs rounded-2xl p-6 hidden">
-            <h3 class="font-serif font-bold mb-4 text-center">固定收支</h3>
-            <form id="recurringForm" class="space-y-4">
-                <input type="text" id="recItem" placeholder="項目" class="elegant-input text-sm" required>
-                <div class="flex gap-2"><select id="recType" class="elegant-input w-1/3 text-sm"><option value="支出">支出</option><option value="收入">收入</option></select><select id="recCategory" class="elegant-input w-2/3 text-sm"></select></div>
-                <div class="flex gap-2"><input type="number" id="recAmount" placeholder="金額" class="elegant-input w-1/2 text-sm" required><div class="w-1/2 flex items-center"><span class="text-xs text-gray-400 mr-1">每月</span><input type="number" id="recDay" placeholder="5" class="bg-transparent outline-none w-full text-sm border-b"><span class="text-xs text-gray-400">號</span></div></div>
-                <select id="recAccount" class="elegant-input text-sm"></select>
-                <div class="flex gap-2 pt-2"><button type="button" onclick="closeModal()" class="flex-1 py-2 text-xs bg-gray-100 rounded-lg">取消</button><button type="submit" class="flex-1 py-2 text-xs bg-ink text-white rounded-lg">儲存</button></div>
-            </form>
-        </div>
-        <!-- Budget Modal -->
-        <div id="budgetModal" class="paper-card w-full max-w-xs rounded-2xl p-6 hidden">
-            <h3 class="font-serif font-bold mb-4 text-center">分類預算</h3>
-            <form id="budgetForm" class="space-y-4">
-                <select id="budCategory" class="elegant-input text-sm" required></select>
-                <input type="number" id="budAmount" placeholder="每月限額" class="elegant-input text-sm" required>
-                <div class="flex gap-2 pt-2"><button type="button" onclick="closeModal()" class="flex-1 py-2 text-xs bg-gray-100 rounded-lg">取消</button><button type="submit" class="flex-1 py-2 text-xs bg-ink text-white rounded-lg">儲存</button></div>
-            </form>
-        </div>
-    </div>
+    <div id="recurringModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"><div class="paper-card w-full max-w-xs rounded-2xl p-6 shadow-2xl transform scale-95 opacity-0 transition-all duration-300" id="recModalContent"><h3 class="text-lg font-serif font-bold mb-4 text-center">設定固定項目</h3><form id="recurringForm" class="space-y-3"><input type="text" id="recItem" placeholder="項目" class="elegant-input w-full text-sm" required><div class="flex gap-2"><select id="recType" class="elegant-input w-1/3 text-sm" onchange="updateRecCats()"><option value="支出">支出</option><option value="收入">收入</option></select><select id="recCategory" class="elegant-input w-2/3 text-sm"></select></div><div class="flex gap-2"><input type="number" id="recAmount" placeholder="金額" class="elegant-input w-1/2 text-sm" required><div class="w-1/2 flex items-center border-b border-gray-300"><span class="text-xs text-gray-400 mr-1">每月</span><input type="number" id="recDay" placeholder="5" min="1" max="31" class="bg-transparent outline-none w-full text-sm" required><span class="text-xs text-gray-400">號</span></div></div><select id="recAccount" class="elegant-input w-full text-sm"></select><div class="flex gap-2 mt-4 pt-2"><button type="button" onclick="closeModal('recurringModal')" class="flex-1 py-2 text-xs text-gray-500 hover:bg-gray-100 rounded-lg">取消</button><button type="submit" class="flex-1 py-2 text-xs bg-ink text-white rounded-lg shadow">儲存</button></div></form></div></div>
+    <div id="accountModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"><div class="paper-card w-full max-w-xs rounded-2xl p-6 shadow-2xl transform scale-95 opacity-0 transition-all duration-300" id="accModalContent"><h3 class="text-lg font-serif font-bold mb-4 text-center">新增帳戶</h3><form id="accountForm" class="space-y-3"><input type="text" id="accName" placeholder="帳戶名稱" class="elegant-input w-full text-sm" required><select id="accType" class="elegant-input w-full text-sm" onchange="toggleDeadline()"><option value="bank">銀行帳戶 / 現金</option><option value="credit">信用卡</option></select><input type="number" id="accInitial" placeholder="初始金額 / 額度" class="elegant-input w-full text-sm" required><div id="deadlineField" class="hidden flex items-center border-b border-gray-300"><span class="text-xs text-gray-400 mr-2">每月</span><input type="number" id="accDeadline" placeholder="27" min="1" max="31" class="bg-transparent outline-none w-10 border-b text-center"><span class="text-xs text-gray-400">號繳款</span></div><div class="flex gap-2 mt-4 pt-2"><button type="button" onclick="closeModal('accountModal')" class="flex-1 py-2 text-xs text-gray-500 hover:bg-gray-100 rounded-lg">取消</button><button type="submit" id="accSubmitBtn" class="flex-1 py-2 text-xs bg-ink text-white rounded-lg shadow">儲存</button></div></form></div></div>
+    <div id="budgetModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"><div class="paper-card w-full max-w-xs rounded-2xl p-6 shadow-2xl transform scale-95 opacity-0 transition-all duration-300" id="budModalContent"><h3 class="text-lg font-serif font-bold mb-4 text-center">設定分類預算</h3><form id="budgetForm" class="space-y-3"><div class="relative"><span class="text-xs text-gray-400">分類</span><select id="budCategory" class="elegant-input w-full text-sm mt-1" required></select></div><div class="relative"><span class="text-xs text-gray-400">每月限額</span><input type="number" id="budAmount" placeholder="15000" class="elegant-input w-full text-sm mt-1" required></div><div class="flex gap-2 mt-6"><button type="button" onclick="closeModal('budgetModal')" class="flex-1 py-2 text-xs text-gray-500 hover:bg-gray-100 rounded-lg">取消</button><button type="submit" class="flex-1 py-2 text-xs bg-ink text-white rounded-lg shadow">設定</button></div></form></div></div>
+    <div id="actionModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"><div class="paper-card w-full max-w-xs rounded-2xl p-6 text-center shadow-xl"><h3 class="font-bold mb-4" id="actionTitle">管理紀錄</h3><div class="space-y-3"><button onclick="triggerEdit()" class="w-full py-3 bg-ink text-white rounded-xl text-sm">編輯內容</button><button onclick="triggerDelete()" class="w-full py-3 border border-red-200 text-red-500 rounded-xl text-sm">刪除</button><button onclick="document.getElementById('actionModal').classList.add('hidden')" class="w-full py-2 text-gray-400 text-xs">取消</button></div></div></div>
 
-    <!-- Bottom Nav -->
-    <div class="fixed bottom-0 left-0 w-full bg-[#fdfcf8]/95 dark:bg-[#1a1a1a]/95 backdrop-blur border-t border-gray-200 dark:border-gray-800 flex justify-around py-3 z-40 safe-area-bottom">
+    <div class="fixed bottom-0 left-0 w-full bg-[#f7f5f0]/95 dark:bg-[#1a1a1a]/95 backdrop-blur border-t border-gray-200 dark:border-gray-800 flex justify-around py-3 z-40 safe-area-bottom">
         <div class="nav-btn nav-active cursor-pointer w-16 text-center" onclick="switchTab('home', this)"><i class="fas fa-home nav-icon block mb-1"></i><span class="nav-label text-gray-400">首頁</span></div>
         <div id="nav-record" class="nav-btn cursor-pointer w-16 text-center" onclick="switchTab('record', this)"><i class="fas fa-pen-nib nav-icon block mb-1"></i><span class="nav-label text-gray-400">記帳</span></div>
         <div class="nav-btn cursor-pointer w-16 text-center" onclick="switchTab('assets', this)"><i class="fas fa-wallet nav-icon block mb-1"></i><span class="nav-label text-gray-400">資產</span></div>
         <div class="nav-btn cursor-pointer w-16 text-center" onclick="switchTab('stats', this)"><i class="fas fa-chart-pie nav-icon block mb-1"></i><span class="nav-label text-gray-400">統計</span></div>
-        <div class="nav-btn cursor-pointer w-16 text-center" onclick="switchTab('settings', this)"><i class="fas fa-sliders-h nav-icon block mb-1"></i><span class="nav-label text-gray-400">設定</span></div>
+        <div class="nav-btn cursor-pointer w-16 text-center" onclick="switchTab('manage', this)"><i class="fas fa-sliders-h nav-icon block mb-1"></i><span class="nav-label text-gray-400">管理</span></div>
     </div>
 
-    <!-- LOGIC -->
     <script>
-        // State
-        let records=[], recurring=[], accounts=[], budgets=[], catChart=null;
+        // Init Global Arrays
+        let allRecords=[], allRecurring=[], myAccounts=[], myBudgets=[], calculatedStats={}, chartInstances={};
         let currentPin = '', storedPin = localStorage.getItem('lumiere_pin');
-        let editId = null;
-        let unsubscribe = []; // For cleaning up listeners
+        let selectedRecordId = null;
+        let unsubscribe = [];
 
         const categories = { '支出': ['飲食', '交通', '購物', '娛樂', '居住', '醫療', '學習', '公司代墊', '其他'], '收入': ['薪資', '獎金', '投資', '兼職', '公司撥款', '其他'] };
 
-        // 1. Startup
-        window.startApp = function() {
-            if(!storedPin) document.getElementById('lockMsg').innerText = "Create a 4-digit PIN";
-            initDate();
+        // Firebase logic will wait for window.db to be ready
+        window.initApp = async function() {
+            if(!storedPin) document.getElementById('lockMsg').innerText = "Create PIN";
+            initDateDisplay(); document.getElementById('dateInput').valueAsDate = new Date();
+            // Start Realtime Listeners
             setupRealtimeListeners();
+        };
+
+        function initDateDisplay() {
+            const now = new Date(); const hour = now.getHours();
+            let greet = "Good Morning."; if(hour>=12 && hour<18) greet="Good Afternoon."; else if(hour>=18) greet="Good Evening.";
+            document.getElementById('greeting').innerText = greet;
+            document.getElementById('dateDisplay').innerText = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
         }
 
-        // 2. Real-time Listeners (The Magic)
+        // 🔥 REALTIME LISTENERS (Improved with Error Handling)
         function setupRealtimeListeners() {
-            const qRec = window.query(window.collection(window.db, "records"), window.orderBy("date", "desc"));
-            unsubscribe.push(window.onSnapshot(qRec, (snap) => {
-                records = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                updateUI();
-            }));
+            // Loading start
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            let loadedCount = 0;
+            const checkLoaded = () => { loadedCount++; if(loadedCount >= 4) document.getElementById('loadingOverlay').classList.add('hidden'); };
+            
+            // Timeout Fallback (5 seconds)
+            setTimeout(() => { document.getElementById('loadingOverlay').classList.add('hidden'); }, 5000);
 
-            unsubscribe.push(window.onSnapshot(window.collection(window.db, "accounts"), (snap) => {
-                accounts = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                updateUI();
-            }));
+            // Helper for handling snapshots
+            const handleSnap = (snap, type) => {
+                const data = snap.docs.map(d => ({id: d.id, ...d.data(), amount: Number(d.data().amount || 0), initial: Number(d.data().initial || 0)}));
+                if(type==='records') allRecords = data;
+                if(type==='accounts') myAccounts = data;
+                if(type==='recurring') allRecurring = data;
+                if(type==='budgets') myBudgets = data;
+                updateUI(); checkLoaded();
+            };
+            
+            const handleError = (e) => {
+                console.error("Firebase Error:", e);
+                const errBox = document.getElementById('errorBox');
+                errBox.style.display = 'block';
+                errBox.innerHTML = `<strong>讀取錯誤</strong><br>${e.code}<br>請檢查 Firestore 規則`;
+                document.getElementById('loadingSpinner').classList.add('hidden');
+                document.getElementById('retryBtn').classList.remove('hidden');
+                document.getElementById('forceEntryBtn').classList.remove('hidden');
+            };
 
-            unsubscribe.push(window.onSnapshot(window.collection(window.db, "recurring"), (snap) => {
-                recurring = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                updateUI();
-            }));
+            // 1. Records
+            const qRec = window.query(window.collection(window.db, "records"), window.orderBy("timestamp", "desc"));
+            unsubscribe.push(window.onSnapshot(qRec, (s) => handleSnap(s, 'records'), handleError));
 
-            unsubscribe.push(window.onSnapshot(window.collection(window.db, "budgets"), (snap) => {
-                budgets = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                updateUI();
-            }));
+            // 2. Accounts
+            unsubscribe.push(window.onSnapshot(window.collection(window.db, "accounts"), (s) => handleSnap(s, 'accounts'), handleError));
+
+            // 3. Recurring
+            unsubscribe.push(window.onSnapshot(window.collection(window.db, "recurring"), (s) => handleSnap(s, 'recurring'), handleError));
+
+            // 4. Budgets
+            unsubscribe.push(window.onSnapshot(window.collection(window.db, "budgets"), (s) => handleSnap(s, 'budgets'), handleError));
         }
 
-        // 3. UI Updates (Centralized)
+        function forceEntry() { document.getElementById('loadingOverlay').classList.add('hidden'); }
+
+        // Update All UI Components
         function updateUI() {
-            renderDropdowns();
-            renderHome();
-            renderRecordList();
-            renderAssets();
-            renderStats();
+            updateDropdowns();
+            const stats = calculateStats();
+            renderHome(stats);
+            renderTransactionList();
+            renderAssets(stats);
+            renderStats(stats);
             renderManage();
         }
 
-        function renderDropdowns() {
-            const opts = accounts.map(a => `<option value="${a.name}">${a.name}</option>`).join('');
-            document.getElementById('accountInput').innerHTML = opts;
-            document.getElementById('toAccountInput').innerHTML = opts;
-            document.getElementById('recAccount').innerHTML = opts;
-            updateCatOpts();
+        // Logic
+        function updateDropdowns() {
+            const opts = myAccounts.map(a => `<option value="${a.name}">${a.name}</option>`).join('');
+            document.getElementById('accountInput').innerHTML = opts; document.getElementById('toAccountInput').innerHTML = opts; document.getElementById('recAccount').innerHTML = opts;
+            updateCategories(); updateRecCats();
             document.getElementById('budCategory').innerHTML = categories['支出'].map(c => `<option value="${c}">${c}</option>`).join('');
         }
 
-        function renderHome() {
-            const { totalAsset, totalDebt, mIncome, mExpense } = calcStats();
-            document.getElementById('netWorth').innerText = `$${format(totalAsset - totalDebt)}`;
-            document.getElementById('totalAsset').innerText = `$${format(totalAsset)}`;
-            document.getElementById('totalDebt').innerText = `$${format(totalDebt)}`;
-            document.getElementById('homeIncome').innerText = `+${format(mIncome)}`;
-            document.getElementById('homeExpense').innerText = `-${format(mExpense)}`;
-            // Bars
-            const max = Math.max(mIncome, mExpense, 1000);
-            document.getElementById('barIncome').style.width = `${(mIncome/max)*100}%`;
-            document.getElementById('barExpense').style.width = `${(mExpense/max)*100}%`;
-            // Recent
-            const list = document.getElementById('homeRecentList'); list.innerHTML = '';
-            records.slice(0, 3).forEach(r => list.appendChild(createRow(r)));
+        function calculateStats() {
+            let stats = {}, totalClaim = 0, mIncome = 0, mExpense = 0; const now = new Date();
+            myAccounts.forEach(a => stats[a.name] = { val: a.type=='bank'?a.initial:0, type: a.type, initial: a.initial, deadline: a.deadline, mExp: 0, mInc: 0 });
+            allRecords.forEach(r => {
+                let amt = Number(r.amount); const rd = new Date(r.date);
+                const isThisMonth = rd.getMonth()===now.getMonth() && rd.getFullYear()===now.getFullYear();
+                if(stats[r.account]) {
+                    if (r.type === '轉帳') {
+                        stats[r.account].val += (stats[r.account].type=='bank' ? -amt : amt); 
+                        if(r.toAccount && stats[r.toAccount]) stats[r.toAccount].val += (stats[r.toAccount].type=='bank' ? amt : -amt);
+                    } else if (r.type === '支出') {
+                        stats[r.account].val += (stats[r.account].type=='bank' ? -amt : amt); 
+                        if(isThisMonth) stats[r.account].mExp += amt;
+                        if(r.isClaimable && !r.isReimbursed) totalClaim += amt;
+                    } else { 
+                        stats[r.account].val += (stats[r.account].type=='bank' ? amt : -amt); 
+                        if(isThisMonth) stats[r.account].mInc += amt;
+                    }
+                }
+                if(isThisMonth && r.type !== '轉帳') { if(r.type === '支出') mExpense += amt; else mIncome += amt; }
+            });
+            return { stats, totalClaim, mIncome, mExpense };
         }
 
-        function renderRecordList() {
-            const list = document.getElementById('transactionList'); list.innerHTML = '';
-            const key = document.getElementById('searchInput').value.toLowerCase();
-            const filter = records.filter(r => (r.item||'').toLowerCase().includes(key) || (r.category||'').toLowerCase().includes(key));
-            if(filter.length === 0) list.innerHTML = '<div class="text-center text-gray-400 text-xs py-10">無紀錄</div>';
-            filter.slice(0, 50).forEach(r => list.appendChild(createRow(r)));
+        function renderHome(stats) {
+            const { totalClaim, mIncome, mExpense } = stats;
+            calculatedStats = stats.stats; // Store for assets page
+            
+            let totalAsset = 0, totalDebt = 0;
+            Object.values(calculatedStats).forEach(s => { if(s.type === 'bank') totalAsset += s.val; else totalDebt += s.val; });
+            document.getElementById('netWorth').innerText = `$${formatMoney(totalAsset - totalDebt)}`;
+            document.getElementById('totalAsset').innerText = `$${formatMoney(totalAsset)}`;
+            document.getElementById('totalDebt').innerText = `$${formatMoney(totalDebt)}`;
+            document.getElementById('homeIncome').innerText = `+${formatMoney(mIncome)}`;
+            document.getElementById('homeExpense').innerText = `-${formatMoney(mExpense)}`;
+            let maxBar = Math.max(mIncome, mExpense, 1000); 
+            document.getElementById('barIncome').style.width = `${Math.min((mIncome/maxBar)*100, 100)}%`;
+            document.getElementById('barExpense').style.width = `${Math.min((mExpense/maxBar)*100, 100)}%`;
+            renderNetWorthChart(totalAsset - totalDebt);
+            const claimEl = document.getElementById('claimAlert');
+            if(totalClaim>0) { claimEl.classList.remove('hidden'); document.getElementById('claimAmount').innerText = `$${formatMoney(totalClaim)}`; } else claimEl.classList.add('hidden');
         }
 
         function renderAssets() {
-            const { balances } = calcStats();
-            const bList = document.getElementById('bankList'); bList.innerHTML = '';
-            const cList = document.getElementById('creditList'); cList.innerHTML = '';
+            const bankList = document.getElementById('bankList');
+            const creditList = document.getElementById('creditList');
+            bankList.innerHTML = ''; creditList.innerHTML = '';
             
-            if(accounts.length === 0) { bList.innerHTML = '<p class="text-center text-gray-400 text-xs py-4">請新增帳戶</p>'; return; }
+            if(myAccounts.length === 0) {
+                bankList.innerHTML = '<p class="text-center text-gray-400 text-xs py-4">請點擊上方 + 新增帳戶</p>';
+                return;
+            }
 
-            accounts.forEach(a => {
-                const bal = balances[a.name] || 0;
+            myAccounts.forEach(acc => {
+                const stat = calculatedStats[acc.name] || { val: acc.initial, type: acc.type };
                 const div = document.createElement('div');
                 div.className = 'paper-card p-4 rounded-xl flex justify-between items-center relative group';
-                if(a.type === 'bank') {
-                    div.innerHTML = `<div><div class="font-bold text-sm text-ink dark:text-white mb-1"><i class="fas fa-wallet text-gray-400 mr-2"></i>${a.name}</div></div><div class="text-right"><div class="font-serif font-bold text-sage text-lg">$${format(a.initial + bal)}</div><button onclick="delDoc('accounts','${a.id}')" class="text-gray-300 hover:text-red-400 absolute top-4 right-2 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times"></i></button></div>`;
-                    bList.appendChild(div);
+                
+                if(acc.type === 'bank') {
+                    div.innerHTML = `<div><div class="font-bold text-sm text-ink dark:text-white mb-1"><i class="fas fa-wallet text-gray-400 mr-2"></i>${acc.name}</div></div><div class="text-right"><div class="font-serif font-bold text-sage text-lg">$${formatMoney(stat.val)}</div><button onclick="deleteData('accounts', '${acc.id}')" class="text-gray-300 hover:text-red-400 absolute top-4 right-2 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times"></i></button></div>`;
+                    bankList.appendChild(div);
                 } else {
-                    const used = bal; // Credit usage is stored as positive expense usually, but logic depends on calc
-                    // My logic: expense subtracts from balance. For credit, initial is limit.
-                    // Let's assume: initial = Limit. Balance = -(spent).
-                    // So Available = Initial + Balance (since balance is negative). Used = -Balance.
-                    const usedAmount = -bal; 
-                    const available = a.initial + bal;
-                    const pct = Math.min((usedAmount / a.initial)*100, 100);
-                    div.innerHTML = `<div><div class="font-bold text-sm text-ink dark:text-white mb-1"><i class="fas fa-credit-card text-gray-400 mr-2"></i>${a.name}</div><div class="w-24 bg-gray-200 h-1 mt-2 rounded-full"><div class="bg-terra h-full rounded-full" style="width:${pct}%"></div></div></div><div class="text-right"><div class="font-serif font-bold text-terra text-lg">$${format(usedAmount)}</div><div class="text-[9px] text-gray-400">Used</div><button onclick="delDoc('accounts','${a.id}')" class="text-gray-300 hover:text-red-400 absolute top-4 right-2 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times"></i></button></div>`;
-                    cList.appendChild(div);
+                    let used = stat.val;
+                    let remaining = acc.initial - used;
+                    let percent = Math.min((used / acc.initial)*100, 100);
+                    div.innerHTML = `<div><div class="font-bold text-sm text-ink dark:text-white mb-1"><i class="fas fa-credit-card text-gray-400 mr-2"></i>${acc.name}</div><div class="w-24 bg-gray-200 h-1 mt-2 rounded-full"><div class="bg-terra h-full rounded-full" style="width:${percent}%"></div></div></div><div class="text-right"><div class="font-serif font-bold text-terra text-lg">$${formatMoney(used)}</div><div class="text-[9px] text-gray-400">Used</div><button onclick="deleteData('accounts', '${acc.id}')" class="text-gray-300 hover:text-red-400 absolute top-4 right-2 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times"></i></button></div>`;
+                    creditList.appendChild(div);
                 }
             });
         }
 
-        function renderManage() {
-            const rList = document.getElementById('recurringList'); rList.innerHTML = '';
-            if(recurring.length===0) rList.innerHTML = '<p class="text-xs text-center text-gray-400 py-4 border border-dashed border-gray-300 rounded-xl">無固定收支</p>';
-            recurring.sort((a,b)=>a.day-b.day).forEach(r => {
-                const div = document.createElement('div'); div.className='paper-card p-3 rounded-xl flex justify-between items-center mb-2';
-                div.innerHTML = `<div class="flex items-center gap-3"><div class="flex flex-col items-center bg-sand/30 p-1.5 rounded-lg w-10"><span class="text-[9px] text-gray-500 uppercase">Day</span><span class="font-serif font-bold text-ink">${r.day}</span></div><div><div class="text-sm font-bold text-ink dark:text-gray-200">${r.item}</div><div class="text-[10px] text-gray-400">$${format(r.amount)} · ${r.account}</div></div></div><div class="flex items-center gap-2"><button onclick="execRec('${r.id}')" class="bg-ink text-white p-1.5 rounded shadow text-[10px]"><i class="fas fa-check"></i></button><button onclick="delDoc('recurring','${r.id}')" class="text-gray-300 p-1.5"><i class="fas fa-times"></i></button></div>`;
-                rList.appendChild(div);
-            });
-
-            const cList = document.getElementById('claimList'); cList.innerHTML = '';
-            const claims = records.filter(r => r.isClaimable && !r.isReimbursed);
-            const totalClaim = claims.reduce((a,b)=>a+b.amount,0);
-            const alert = document.getElementById('claimAlert');
-            if(totalClaim > 0) { alert.classList.remove('hidden'); document.getElementById('claimAmount').innerText=`$${format(totalClaim)}`; } 
-            else alert.classList.add('hidden');
-
-            claims.forEach(c => {
-                const div = document.createElement('div'); div.className='paper-card p-3 rounded-xl flex justify-between items-center mb-2 border-l-4 border-terra';
-                div.innerHTML = `<div><div class="text-sm font-bold">${c.item}</div><div class="text-[10px] text-gray-400">${c.date} · ${c.account}</div></div><div class="flex items-center gap-2"><span class="font-serif font-bold text-terra">$${format(c.amount)}</span><button onclick="reimburse('${c.id}')" class="text-[10px] bg-white border border-gray-200 px-2 py-1 rounded shadow-sm">核銷</button></div>`;
-                cList.appendChild(div);
-            });
-        }
-
-        function renderStats() {
-            const ctx = document.getElementById('categoryChart').getContext('2d');
-            const now = new Date();
-            const thisMonth = records.filter(r => { const d=new Date(r.date); return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear() && r.type==='支出'; });
-            let map = {}; thisMonth.forEach(r => map[r.category] = (map[r.category]||0) + r.amount);
+        function renderTransactionList() {
+            const list = document.getElementById('transactionList'); list.innerHTML = '';
+            const keyword = document.getElementById('searchInput').value.toLowerCase();
+            let displayData = allRecords.filter(r => (r.item||'').toLowerCase().includes(keyword) || (r.category||'').toLowerCase().includes(keyword));
             
-            if(catChart) catChart.destroy();
-            catChart = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(map), datasets: [{ data: Object.values(map), backgroundColor: ['#d68c78','#eaddcf','#84a98c','#cdb4db','#9ca3af','#f4a261'], borderWidth: 0 }] }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } });
+            if(displayData.length === 0) { list.innerHTML = '<div class="text-center text-gray-400 text-xs py-10">沒有紀錄</div>'; return; }
 
-            const bList = document.getElementById('budgetList'); bList.innerHTML = '';
-            budgets.forEach(b => {
-                const spent = map[b.category] || 0;
-                const pct = Math.min((spent/b.amount)*100, 100);
-                const color = pct>90?'bg-red-400':'bg-sage';
-                const div = document.createElement('div');
-                div.innerHTML = `<div class="flex justify-between text-xs mb-1"><span class="font-bold">${b.category}</span><span>$${format(spent)} / $${format(b.amount)}</span></div><div class="w-full bg-gray-200 h-1.5 rounded-full"><div class="${color} h-full rounded-full" style="width:${pct}%"></div></div>`;
-                bList.appendChild(div);
+            displayData.slice(0, 50).forEach((r) => {
+                const isExp = r.type === '支出', isTransfer = r.type === '轉帳';
+                let iconClass = isExp ? 'bg-[#fcece9] text-terra' : (isTransfer ? 'bg-gray-100 text-gray-500' : 'bg-[#eaf4ed] text-sage');
+                let icon = isExp ? 'fa-shopping-bag' : (isTransfer ? 'fa-exchange-alt' : 'fa-seedling');
+                let amountColor = isExp ? 'text-terra' : (isTransfer ? 'text-gray-500' : 'text-sage');
+                let sign = isExp ? '-' : (isTransfer ? '' : '+');
+                const div = document.createElement('div'); div.className = 'paper-card p-3 rounded-xl flex justify-between items-center mb-2 cursor-pointer hover:bg-white/50';
+                div.onclick = () => openActionModal(r);
+                div.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full flex items-center justify-center text-xs ${iconClass}"><i class="fas ${icon}"></i></div><div><div class="text-sm font-bold text-ink dark:text-gray-200">${r.item || '轉帳'}</div><div class="text-[10px] text-gray-400">${r.date} · ${r.type === '轉帳' ? r.account + ' ➜ ' + r.toAccount : r.category}</div></div></div><div class="font-serif font-bold ${amountColor}">${sign}${formatMoney(r.amount)}</div>`;
+                list.appendChild(div);
             });
         }
 
-        // 4. Calculations
-        function calcStats() {
-            let balances = {}, mIncome = 0, mExpense = 0, totalAsset = 0, totalDebt = 0;
-            const now = new Date();
-            
-            records.forEach(r => {
-                const amt = Number(r.amount);
-                // Balance calc
-                if(r.type === '轉帳') {
-                    balances[r.account] = (balances[r.account]||0) - amt;
-                    if(r.toAccount) balances[r.toAccount] = (balances[r.toAccount]||0) + amt;
-                } else if (r.type === '支出') {
-                    balances[r.account] = (balances[r.account]||0) - amt;
-                    const d = new Date(r.date);
-                    if(d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear()) mExpense += amt;
-                } else { // Income
-                    balances[r.account] = (balances[r.account]||0) + amt;
-                    const d = new Date(r.date);
-                    if(d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear()) mIncome += amt;
-                }
-            });
-
-            accounts.forEach(a => {
-                const bal = (balances[a.name] || 0) + Number(a.initial);
-                if(a.type === 'bank') totalAsset += bal;
-                else totalDebt += (Number(a.initial) - bal); // Debt is how much of the limit is missing
-            });
-
-            return { balances, totalAsset, totalDebt, mIncome, mExpense };
+        // Firebase Operations
+        async function saveData(collectionName, data) {
+            try {
+                await window.addDoc(window.collection(window.db, collectionName), data);
+                // No need to fetchData(), snapshot listener will auto-update!
+            } catch(e) { alert("Save Failed"); console.error(e); }
+        }
+        
+        async function deleteData(collectionName, id) {
+            if(!confirm('Delete?')) return;
+            try { await window.deleteDoc(window.doc(window.db, collectionName, id)); } catch(e) { alert("Delete Failed"); }
         }
 
-        // 5. Actions (CRUD)
-        async function save(coll, data) {
-            try { await window.addDoc(window.collection(window.db, coll), data); toast('Saved'); } catch(e) { alert(e.message); }
-        }
-        async function update(coll, id, data) {
-            try { await window.updateDoc(window.doc(window.db, coll, id), data); toast('Updated'); } catch(e) { alert(e.message); }
-        }
-        window.delDoc = async (coll, id) => { if(confirm('Delete?')) await window.deleteDoc(window.doc(window.db, coll, id)); }
-        window.reimburse = async (id) => { if(confirm('Confirm?')) await update('records', id, { isReimbursed: true }); }
-        window.execRec = async (id) => {
-            const r = recurring.find(x=>x.id===id); if(!r) return;
-            if(confirm('Add Record?')) save('records', { date: new Date().toISOString().split('T')[0], type: r.type, account: r.account, category: r.category, item: r.item, amount: Number(r.amount), isClaimable: false, isReimbursed: false });
+        async function updateData(collectionName, id, data) {
+            try { await window.updateDoc(window.doc(window.db, collectionName, id), data); } catch(e) { alert("Update Failed"); }
         }
 
-        // Forms
+        // Form Handlers
         document.getElementById('financeForm').addEventListener('submit', async e => {
-            e.preventDefault();
+            e.preventDefault(); const btn = document.getElementById('submitBtn'); btn.disabled=true;
             const data = {
                 date: document.getElementById('dateInput').value,
                 type: document.getElementById('formType').value,
                 account: document.getElementById('accountInput').value,
-                category: document.getElementById('categoryInput').value || '',
+                category: document.getElementById('categoryInput').value,
                 item: document.getElementById('itemInput').value,
                 amount: Number(document.getElementById('amountInput').value),
                 isClaimable: document.getElementById('isClaimable').checked,
-                toAccount: document.getElementById('toAccountInput').value || '',
+                toAccount: document.getElementById('toAccountInput').value,
                 isReimbursed: false,
                 timestamp: Date.now()
             };
-            if(editId) { await update('records', editId, data); cancelEdit(); }
-            else { await save('records', data); }
-            document.getElementById('itemInput').value=''; document.getElementById('amountInput').value='';
+            
+            if(btn.innerText.includes('更新')) { await updateData('records', document.getElementById('editId').value, data); cancelEdit(); }
+            else { await saveData('records', data); }
+            
+            document.getElementById('itemInput').value=''; document.getElementById('amountInput').value=''; btn.disabled=false;
         });
 
-        document.getElementById('accountForm').addEventListener('submit', e => { e.preventDefault(); save('accounts', { name: document.getElementById('accName').value, type: document.getElementById('accType').value, initial: Number(document.getElementById('accInitial').value), deadline: document.getElementById('accDeadline').value }); closeModal(); });
-        document.getElementById('recurringForm').addEventListener('submit', e => { e.preventDefault(); save('recurring', { item: document.getElementById('recItem').value, type: document.getElementById('recType').value, category: document.getElementById('recCategory').value, amount: Number(document.getElementById('recAmount').value), day: document.getElementById('recDay').value, account: document.getElementById('recAccount').value }); closeModal(); });
-        document.getElementById('budgetForm').addEventListener('submit', e => { 
-            e.preventDefault(); 
+        document.getElementById('accountForm').addEventListener('submit', async e => {
+            e.preventDefault(); closeModal('accountModal');
+            await saveData('accounts', {
+                name: document.getElementById('accName').value,
+                type: document.getElementById('accType').value,
+                initial: Number(document.getElementById('accInitial').value),
+                deadline: document.getElementById('accDeadline').value || 0
+            });
+        });
+
+        document.getElementById('recurringForm').addEventListener('submit', async e => {
+            e.preventDefault(); closeModal('recurringModal');
+            await saveData('recurring', {
+                item: document.getElementById('recItem').value,
+                type: document.getElementById('recType').value,
+                category: document.getElementById('recCategory').value,
+                amount: Number(document.getElementById('recAmount').value),
+                day: document.getElementById('recDay').value,
+                account: document.getElementById('recAccount').value
+            });
+        });
+
+        document.getElementById('budgetForm').addEventListener('submit', async e => {
+            e.preventDefault(); closeModal('budgetModal');
             const cat = document.getElementById('budCategory').value;
-            const exist = budgets.find(b=>b.category===cat);
-            const amt = Number(document.getElementById('budAmount').value);
-            if(exist) update('budgets', exist.id, { amount: amt });
-            else save('budgets', { category: cat, amount: amt });
-            closeModal(); 
+            const existing = myBudgets.find(b => b.category === cat);
+            if(existing) await updateData('budgets', existing.id, { amount: Number(document.getElementById('budAmount').value) });
+            else await saveData('budgets', { category: cat, amount: Number(document.getElementById('budAmount').value) });
         });
 
-        // Helpers
-        function createRow(r) {
-            const isExp = r.type === '支出', isTrans = r.type === '轉帳';
-            let icon = isExp ? 'fa-shopping-bag' : (isTrans ? 'fa-exchange-alt' : 'fa-seedling');
-            let color = isExp ? 'text-terra' : (isTrans ? 'text-gray-500' : 'text-sage');
-            let bg = isExp ? 'bg-[#fcece9]' : (isTrans ? 'bg-gray-100' : 'bg-[#eaf4ed]');
-            const div = document.createElement('div'); div.className = 'paper-card p-3 rounded-xl flex justify-between items-center mb-2 cursor-pointer hover:bg-white/50';
-            div.onclick = () => loadEdit(r);
-            div.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full flex items-center justify-center text-xs ${bg} ${color}"><i class="fas ${icon}"></i></div><div><div class="text-sm font-bold text-ink dark:text-gray-200">${r.item||'轉帳'}</div><div class="text-[10px] text-gray-400">${r.date} · ${r.type==='轉帳'?r.account+' ➜ '+r.toAccount : r.category}</div></div></div><div class="font-serif font-bold ${color}">${isExp?'-':(isTrans?'':'+')}${format(r.amount)}</div>`;
-            return div;
-        }
-
-        function loadEdit(r) {
-            editId = r.id; setFormType(r.type);
+        // Other UI logic
+        function openActionModal(record) { selectedRecordId = record; document.getElementById('actionModal').classList.remove('hidden'); }
+        function triggerEdit() { 
+            document.getElementById('actionModal').classList.add('hidden'); 
+            const r = selectedRecordId; 
+            document.getElementById('editId').value = r.id;
+            setFormType(r.type);
             document.getElementById('dateInput').value = r.date;
-            document.getElementById('accountInput').value = r.account;
-            document.getElementById('amountInput').value = r.amount;
+            document.getElementById('accountInput').value = r.account; 
+            document.getElementById('amountInput').value = r.amount; 
             document.getElementById('itemInput').value = r.item;
+            if(r.type === '轉帳') document.getElementById('toAccountInput').value = r.toAccount; 
+            else document.getElementById('categoryInput').value = r.category; 
             document.getElementById('isClaimable').checked = r.isClaimable;
-            if(r.type==='轉帳') document.getElementById('toAccountInput').value = r.toAccount;
-            else document.getElementById('categoryInput').value = r.category;
-            
-            document.getElementById('submitBtn').innerText = "更新紀錄";
-            document.getElementById('cancelEditBtn').classList.remove('hidden');
-            switchTab('record');
+            document.getElementById('submitBtn').innerText = "更新紀錄"; 
+            document.getElementById('cancelEditBtn').classList.remove('hidden'); 
+            switchTab('record'); 
         }
-        function cancelEdit() { document.getElementById('financeForm').reset(); editId=null; document.getElementById('submitBtn').innerText="SAVE"; document.getElementById('cancelEditBtn').classList.add('hidden'); setFormType('支出'); }
+        function cancelEdit() { document.getElementById('financeForm').reset(); document.getElementById('submitBtn').innerText = "記上一筆"; document.getElementById('submitBtn').onclick = null; document.getElementById('cancelEditBtn').classList.add('hidden'); setFormType('支出'); }
+        function triggerDelete() { document.getElementById('actionModal').classList.add('hidden'); deleteData('records', selectedRecordId.id); }
+        async function executeRecurring(id) { const rec = allRecurring.find(r=>r.id===id); if(!confirm('入帳?')) return; await saveData('records', {date: new Date().toISOString().split('T')[0], type: rec.type, account: rec.account, category: rec.category, item: rec.item, amount: rec.amount, isClaimable: false, isReimbursed: false}); }
+        async function reimburseRecord(id) { if(!confirm('已核銷?')) return; await updateData('records', id, { isReimbursed: true }); }
 
-        function toast(msg) { const t=document.getElementById('toast'); document.getElementById('toastMsg').innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2000); }
-        function format(n) { return new Intl.NumberFormat('zh-TW').format(n); }
-        function initDate() { const n = new Date(); document.getElementById('dateDisplay').innerText = n.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }); const h=n.getHours(); document.getElementById('greeting').innerText = h<12?"Good Morning.":h<18?"Good Afternoon.":"Good Evening."; document.getElementById('dateInput').valueAsDate = n; }
-        
-        // UI Toggles
-        window.setFormType = (t) => {
-            document.getElementById('formType').value=t;
-            ['btnExpense','btnIncome','btnTransfer'].forEach(b=>document.getElementById(b).className='flex-1 text-sm text-gray-400 pb-3 transition');
-            const active = t==='支出'?'btnExpense':(t==='收入'?'btnIncome':'btnTransfer');
-            const color = t==='支出'?'terra':(t==='收入'?'sage':'gray-500');
-            document.getElementById(active).className=`flex-1 text-sm font-bold pb-3 border-b-2 border-${color} text-${color} transition`;
+        // Render Helpers (Manage & Stats)
+        function renderManage(){ 
+            const recList=document.getElementById('recurringList'); recList.innerHTML='';
+            if(allRecurring.length === 0) recList.innerHTML = '<p class="text-xs text-center text-gray-400 py-4 border border-dashed border-gray-300 rounded-xl">無固定收支</p>';
+            allRecurring.sort((a,b)=>a.day-b.day).forEach(rec=>{
+                const div=document.createElement('div'); div.className='paper-card p-3 rounded-xl flex justify-between items-center mb-2';
+                div.innerHTML=`<div class="flex items-center gap-3"><div class="flex flex-col items-center bg-sand/30 p-1.5 rounded-lg w-10"><span class="text-[9px] text-gray-500 uppercase">Day</span><span class="font-serif font-bold text-ink">${rec.day}</span></div><div><div class="text-sm font-bold text-ink dark:text-gray-200">${rec.item}</div><div class="text-[10px] text-gray-400">${rec.account} · ${rec.category}</div></div></div><div class="flex items-center gap-2"><span class="font-serif text-sm ${rec.type=='支出'?'text-gray-500':'text-sage'}">$${formatMoney(rec.amount)}</span><button onclick="executeRecurring('${rec.id}')" class="bg-ink text-white p-1.5 rounded shadow text-[10px]"><i class="fas fa-check"></i></button><button onclick="deleteData('recurring', '${rec.id}')" class="text-gray-300 hover:text-red-400 p-1.5"><i class="fas fa-times"></i></button></div>`;
+                recList.appendChild(div);
+            });
+            const claimList=document.getElementById('claimList'); claimList.innerHTML='';
+            const claims=allRecords.filter(r=>r.isClaimable&&!r.isReimbursed);
+            if(claims.length===0) claimList.innerHTML='<p class="text-xs text-center text-gray-400 py-4">無待核銷項目</p>';
+            claims.forEach(c=>{const div=document.createElement('div');div.className='paper-card p-3 rounded-xl flex justify-between items-center mb-2 border-l-4 border-terra';div.innerHTML=`<div><div class="text-sm font-bold">${c.item}</div><div class="text-[10px] text-gray-400">${c.date} · ${c.account}</div></div><div class="flex items-center gap-2"><span class="font-serif font-bold text-terra">$${formatMoney(c.amount)}</span><button onclick="reimburseRecord('${c.id}')" class="text-[10px] bg-white border border-gray-200 px-2 py-1 rounded shadow-sm hover:bg-gray-50">核銷</button></div>`;claimList.appendChild(div)}) 
+        }
+
+        function renderStats() {
+            const ctxCat=document.getElementById('categoryChart').getContext('2d');
+            const thisMonth=allRecords.filter(r=>{const d=new Date(r.date); const now=new Date(); return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()&&r.type==='支出'});
+            let catMap={}; thisMonth.forEach(r=>catMap[r.category]=(catMap[r.category]||0)+r.amount);
+            if(chartInstances.cat)chartInstances.cat.destroy();
+            chartInstances.cat=new Chart(ctxCat,{type:'doughnut',data:{labels:Object.keys(catMap),datasets:[{data:Object.values(catMap),backgroundColor:['#d68c78','#eaddcf','#84a98c','#cdb4db','#9ca3af','#f4a261'],borderWidth:0}]},options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
             
-            document.getElementById('normalFields').classList.toggle('hidden', t==='轉帳');
-            document.getElementById('toAccountField').classList.toggle('hidden', t!=='轉帳');
-            document.getElementById('claimSection').classList.toggle('hidden', t==='轉帳');
-            updateCatOpts();
+            const bList = document.getElementById('budgetList'); bList.innerHTML = ''; 
+            if(myBudgets.length === 0) bList.innerHTML = '<p class="text-xs text-gray-400 text-center">無預算</p>';
+            myBudgets.forEach(b => { 
+                const spent = catMap[b.category] || 0; 
+                const pct = Math.min((spent / b.amount)*100, 100); 
+                const color = pct > 90 ? 'bg-red-400' : 'bg-sage'; 
+                const div = document.createElement('div'); 
+                div.innerHTML = `<div class="flex justify-between text-xs mb-1"><span class="font-bold">${b.category}</span><span>$${formatMoney(spent)} / $${formatMoney(b.amount)}</span></div><div class="w-full bg-gray-200 h-1.5 rounded-full"><div class="${color} h-full rounded-full transition-all duration-500" style="width:${pct}%"></div></div>`; 
+                bList.appendChild(div); 
+            }); 
         }
-        function updateCatOpts() { document.getElementById('categoryInput').innerHTML = categories[document.getElementById('formType').value]?.map(c=>`<option>${c}</option>`).join('')||''; }
-        window.switchTab = (t, btn) => { document.querySelectorAll('.page-content').forEach(p=>p.classList.remove('active')); document.getElementById('page-'+t).classList.add('active'); if(btn){document.querySelectorAll('.nav-active').forEach(b=>b.classList.remove('nav-active')); btn.classList.add('nav-active');} if(t==='stats') renderStats(); }
-        window.openModal = (id) => { document.getElementById('modalOverlay').classList.remove('hidden'); document.getElementById(id).classList.remove('hidden'); }
-        window.closeModal = () => { document.getElementById('modalOverlay').classList.add('hidden'); document.querySelectorAll('#modalOverlay > div').forEach(d=>d.classList.add('hidden')); }
-        window.toggleView = () => { document.getElementById('calendarView').classList.toggle('hidden'); }
-        window.toggleDeadline = () => { document.getElementById('deadlineField').classList.toggle('hidden', document.getElementById('accType').value !== 'credit'); }
-        window.changeMonth = (n) => { /* Cal logic skipped for brevity, focused on Firebase */ };
-        
-        // PIN
-        window.enterPin = (n) => {
-            if(n==='del') currentPin=currentPin.slice(0,-1); else if(currentPin.length<4) currentPin+=n;
-            for(let i=1;i<=4;i++) document.getElementById('dot'+i).className = i<=currentPin.length?'pin-dot filled':'pin-dot';
-            if(currentPin.length===4) {
-                if(!storedPin) { localStorage.setItem('lumiere_pin', currentPin); storedPin=currentPin; alert('PIN Set!'); document.getElementById('lockScreen').classList.add('hidden'); }
-                else if(currentPin===storedPin) document.getElementById('lockScreen').classList.add('hidden');
-                else { currentPin=''; updatePinDots(); alert('Wrong PIN'); }
-            }
+
+        function renderNetWorthChart(currentNetWorth) {
+            const ctx = document.getElementById('netWorthChart').getContext('2d');
+            let labels = [], dataPoints = [];
+            for(let i=5; i>=0; i--) { const d = new Date(); d.setMonth(d.getMonth() - i); labels.push(`${d.getMonth()+1}月`); dataPoints.push(currentNetWorth - (Math.random() * 2000 * i)); } 
+            dataPoints[5] = currentNetWorth;
+            if(chartInstances.nw) chartInstances.nw.destroy();
+            chartInstances.nw = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ label: '淨資產', data: dataPoints, borderColor: '#84a98c', tension: 0.4, fill: true, backgroundColor: 'rgba(132, 169, 140, 0.1)' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } } });
         }
-        function updatePinDots() { for(let i=1;i<=4;i++) document.getElementById('dot'+i).className = i<=currentPin.length?'pin-dot filled':'pin-dot'; }
-        window.resetPin = () => { if(confirm('Reset PIN?')) { localStorage.removeItem('lumiere_pin'); location.reload(); } }
-        window.exportCSV = () => { const csv = Papa.unparse(records); const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob(["\uFEFF"+csv], {type: "text/csv;charset=utf-8;"})); link.download = "Lumiere.csv"; link.click(); }
-        
-        document.getElementById('themeToggle').addEventListener('click', () => { document.documentElement.classList.toggle('dark'); document.getElementById('themeToggleBtn').children[0].classList.toggle('translate-x-4'); });
+
+        // Utils
+        function setFormType(t){document.getElementById('formType').value=t;const expBtn=document.getElementById('btnExpense'),incBtn=document.getElementById('btnIncome'),transBtn=document.getElementById('btnTransfer'),claimSec=document.getElementById('claimSection'); [expBtn,incBtn,transBtn].forEach(b=>b.className='flex-1 text-sm text-gray-400 pb-2 transition'); const activeBtn=t==='支出'?expBtn:(t==='收入'?incBtn:transBtn); const color=t==='支出'?'terra':(t==='收入'?'sage':'gray-500'); activeBtn.className=`flex-1 text-sm font-bold pb-2 border-b-2 border-${color} text-${color} transition`; if(t==='轉帳'){document.getElementById('normalFields').classList.add('hidden');document.getElementById('toAccountField').classList.remove('hidden');claimSec.classList.add('hidden');document.getElementById('fromLabel').innerText="轉出";document.getElementById('itemInput').value="轉帳"}else{document.getElementById('normalFields').classList.remove('hidden');document.getElementById('toAccountField').classList.add('hidden');claimSec.classList.remove('hidden');document.getElementById('fromLabel').innerText="帳戶";if(document.getElementById('itemInput').value==="轉帳")document.getElementById('itemInput').value=""} updateCategories()}
+        function updateCategories(){document.getElementById('categoryInput').innerHTML=categories[document.getElementById('formType').value]?.map(c=>`<option>${c}</option>`).join('')||''}
+        function updateRecCats(){document.getElementById('recCategory').innerHTML=categories[document.getElementById('recType').value].map(c=>`<option>${c}</option>`).join('')}
+        function switchTab(tab,btn){document.querySelectorAll('.page-content').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+tab).classList.add('active');if(btn){document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('nav-active'));btn.classList.add('nav-active')}if(tab==='stats')renderStats();if(tab==='assets')renderAssets();}
+        function toggleDeadline() { document.getElementById('deadlineField').className = document.getElementById('accType').value === 'credit' ? 'flex items-center border-b border-gray-300' : 'hidden'; }
+        function openRecurringModal(){document.getElementById('recurringModal').classList.remove('hidden');setTimeout(()=>{document.getElementById('recModalContent').classList.remove('scale-95','opacity-0');document.getElementById('recModalContent').classList.add('scale-100','opacity-100')},10)}
+        function openAccountModal(){document.getElementById('accountModal').classList.remove('hidden');setTimeout(()=>{document.getElementById('accModalContent').classList.remove('scale-95','opacity-0');document.getElementById('accModalContent').classList.add('scale-100','opacity-100')},10)}
+        function openBudgetModal(){document.getElementById('budgetModal').classList.remove('hidden');setTimeout(()=>{document.getElementById('budModalContent').classList.remove('scale-95','opacity-0');document.getElementById('budModalContent').classList.add('scale-100','opacity-100')},10)}
+        function closeModal(id){let c=document.getElementById(id.replace('Modal','ModalContent'));if(c){c.classList.remove('scale-100','opacity-100');c.classList.add('scale-95','opacity-0');}setTimeout(()=>document.getElementById(id).classList.add('hidden'),200)}
+        function enterPin(n){if(n==='del')currentPin=currentPin.slice(0,-1);else if(currentPin.length<4)currentPin+=n;for(let i=1;i<=4;i++)document.getElementById('dot'+i).className=i<=currentPin.length?'pin-dot filled':'pin-dot';if(currentPin.length===4){if(!storedPin){localStorage.setItem('lumiere_pin',currentPin);storedPin=currentPin;alert('PIN Set!');document.getElementById('lockScreen').style.display='none'}else if(currentPin===storedPin){document.getElementById('lockScreen').style.display='none'}else{document.getElementById('lockMsg').innerText="Wrong PIN";currentPin='';for(let i=1;i<=4;i++)document.getElementById('dot'+i).className='pin-dot'}}}
+        function forgetPin(){if(confirm('重設 PIN 碼將清除本地快取，是否繼續？')){localStorage.removeItem('lumiere_pin');location.reload()}}
+        function exportCSV() { const csv = Papa.unparse(allRecords); const blob = new Blob(["\uFEFF"+csv], {type: "text/csv;charset=utf-8;"}); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `Lumiere_${new Date().toISOString().slice(0,10)}.csv`; link.click(); }
+        const formatMoney=(n)=>new Intl.NumberFormat('zh-TW').format(n);
+        if(localStorage.theme==='dark'||(!('theme'in localStorage)&&window.matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark');
+        document.getElementById('themeToggle').addEventListener('click',()=>{document.documentElement.classList.toggle('dark');localStorage.theme=document.documentElement.classList.contains('dark')?'dark':'light';if(chartInstances.cat)renderStats()});
     </script>
-
-    <!-- Modals Overlay -->
-    <div id="modalOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-6">
-        <div id="accountModal" class="paper-card w-full max-w-xs rounded-2xl p-6 hidden">
-            <h3 class="font-serif font-bold mb-4 text-center">新增帳戶</h3>
-            <form id="accountForm" class="space-y-4">
-                <input type="text" id="accName" placeholder="名稱" class="elegant-input text-sm" required>
-                <select id="accType" class="elegant-input text-sm" onchange="toggleDeadline()"><option value="bank">銀行 / 現金</option><option value="credit">信用卡</option></select>
-                <input type="number" id="accInitial" placeholder="初始金額 / 額度" class="elegant-input text-sm" required>
-                <div id="deadlineField" class="hidden flex items-center"><span class="text-xs text-gray-400 mr-2">每月</span><input type="number" id="accDeadline" placeholder="27" min="1" max="31" class="bg-transparent outline-none w-10 border-b text-center"><span class="text-xs text-gray-400">號繳款</span></div>
-                <div class="flex gap-2 pt-2"><button type="button" onclick="closeModal()" class="flex-1 py-2 text-xs bg-gray-100 rounded-lg">取消</button><button type="submit" class="flex-1 py-2 text-xs bg-ink text-white rounded-lg">儲存</button></div>
-            </form>
-        </div>
-        <div id="recurringModal" class="paper-card w-full max-w-xs rounded-2xl p-6 hidden">
-            <h3 class="font-serif font-bold mb-4 text-center">固定收支</h3>
-            <form id="recurringForm" class="space-y-4">
-                <input type="text" id="recItem" placeholder="項目" class="elegant-input text-sm" required>
-                <div class="flex gap-2"><select id="recType" class="elegant-input w-1/3 text-sm"><option value="支出">支出</option><option value="收入">收入</option></select><select id="recCategory" class="elegant-input w-2/3 text-sm"></select></div>
-                <div class="flex gap-2"><input type="number" id="recAmount" placeholder="金額" class="elegant-input w-1/2 text-sm" required><div class="w-1/2 flex items-center"><span class="text-xs text-gray-400 mr-1">每月</span><input type="number" id="recDay" placeholder="5" class="bg-transparent outline-none w-full text-sm border-b"><span class="text-xs text-gray-400">號</span></div></div>
-                <select id="recAccount" class="elegant-input text-sm"></select>
-                <div class="flex gap-2 pt-2"><button type="button" onclick="closeModal()" class="flex-1 py-2 text-xs bg-gray-100 rounded-lg">取消</button><button type="submit" class="flex-1 py-2 text-xs bg-ink text-white rounded-lg">儲存</button></div>
-            </form>
-        </div>
-        <div id="budgetModal" class="paper-card w-full max-w-xs rounded-2xl p-6 hidden">
-            <h3 class="font-serif font-bold mb-4 text-center">分類預算</h3>
-            <form id="budgetForm" class="space-y-4">
-                <select id="budCategory" class="elegant-input text-sm" required></select>
-                <input type="number" id="budAmount" placeholder="每月限額" class="elegant-input text-sm" required>
-                <div class="flex gap-2 pt-2"><button type="button" onclick="closeModal()" class="flex-1 py-2 text-xs bg-gray-100 rounded-lg">取消</button><button type="submit" class="flex-1 py-2 text-xs bg-ink text-white rounded-lg">儲存</button></div>
-            </form>
-        </div>
-    </div>
-
 </body>
 </html>
